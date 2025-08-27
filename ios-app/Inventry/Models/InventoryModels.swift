@@ -10,10 +10,12 @@ struct PhotoReference: Identifiable, Codable {
     var uploadedAt: Date?
     var createdAt: Date
     
-    // For holding UIImage temporarily (not codable)
+    // For holding UIImage temporarily (not codable - stored in memory)
+    private var _originalImage: UIImage?
+    
     var originalImage: UIImage? {
-        get { nil }
-        set { /* Store locally if needed */ }
+        get { _originalImage }
+        set { _originalImage = newValue }
     }
     
     init(filename: String, originalImage: UIImage? = nil) {
@@ -23,10 +25,34 @@ struct PhotoReference: Identifiable, Codable {
         self.remoteURL = nil
         self.uploadedAt = nil
         self.createdAt = Date()
+        self._originalImage = originalImage
     }
     
     private enum CodingKeys: String, CodingKey {
         case id, filename, localPath, remoteURL, uploadedAt, createdAt
+    }
+    
+    // Custom init from decoder (doesn't include originalImage)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        filename = try container.decode(String.self, forKey: .filename)
+        localPath = try container.decodeIfPresent(String.self, forKey: .localPath)
+        remoteURL = try container.decodeIfPresent(String.self, forKey: .remoteURL)
+        uploadedAt = try container.decodeIfPresent(Date.self, forKey: .uploadedAt)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        _originalImage = nil
+    }
+    
+    // Custom encode (doesn't include originalImage)
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(filename, forKey: .filename)
+        try container.encodeIfPresent(localPath, forKey: .localPath)
+        try container.encodeIfPresent(remoteURL, forKey: .remoteURL)
+        try container.encodeIfPresent(uploadedAt, forKey: .uploadedAt)
+        try container.encode(createdAt, forKey: .createdAt)
     }
 }
 

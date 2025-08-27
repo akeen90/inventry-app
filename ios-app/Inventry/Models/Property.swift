@@ -10,6 +10,7 @@ struct Property: Identifiable, Codable {
     var tenant: Tenant?
     var inventoryType: InventoryType
     var status: PropertyStatus
+    var inventoryReport: InventoryReport?
     var createdAt: Date
     var updatedAt: Date
     
@@ -23,8 +24,28 @@ struct Property: Identifiable, Codable {
         self.tenant = nil
         self.inventoryType = inventoryType
         self.status = .draft
+        self.inventoryReport = nil
         self.createdAt = Date()
         self.updatedAt = Date()
+    }
+    
+    // MARK: - Computed Properties for Inventory
+    
+    var inventoryProgress: Int {
+        guard let report = inventoryReport else { return 0 }
+        return Int(report.completionPercentage)
+    }
+    
+    var totalInventoryItems: Int {
+        inventoryReport?.totalItems ?? 0
+    }
+    
+    var completedInventoryItems: Int {
+        inventoryReport?.completedItems ?? 0
+    }
+    
+    var hasInventoryData: Bool {
+        inventoryReport != nil && !inventoryReport!.rooms.isEmpty
     }
 }
 

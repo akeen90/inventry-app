@@ -326,35 +326,67 @@ struct PhotoThumbnailCard: View {
                 .fill(Color(.systemGray5))
                 .frame(height: 140)
                 .overlay(
-                    // This would show the actual image in a real implementation
-                    VStack {
-                        Image(systemName: "photo")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                        
-                        Text(photo.filename)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 4)
+                    Group {
+                        if let image = photo.originalImage {
+                            // Display actual image if available
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .clipped()
+                        } else {
+                            // Placeholder when no image available
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                
+                                Text(photo.filename)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 4)
+                            }
+                        }
                     }
                 )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             
-            // Delete button
+            // Delete button with improved design
             VStack {
                 HStack {
                     Spacer()
                     Button(action: onDelete) {
-                        Image(systemName: "trash.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(.white)
-                            .background(Color.red.opacity(0.8))
-                            .clipShape(Circle())
+                        ZStack {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 28, height: 28)
+                            
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
                     }
                     .padding(8)
                 }
                 Spacer()
+            }
+            
+            // Photo info overlay
+            VStack {
+                Spacer()
+                HStack {
+                    Text(formatDate(photo.createdAt))
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(8)
+                    
+                    Spacer()
+                }
+                .padding(8)
             }
         }
         .background(
@@ -365,6 +397,13 @@ struct PhotoThumbnailCard: View {
         .onTapGesture {
             onTap()
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
@@ -411,7 +450,7 @@ struct EmptyPhotoStateView: View {
     }
 }
 
-// MARK: - Enhanced Image Picker
+// MARK: - Enhanced Image Picker with Safe Error Handling
 struct ModernImagePickerView: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage?) -> Void
@@ -419,20 +458,33 @@ struct ModernImagePickerView: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.sourceType = sourceType
-        picker.delegate = context.coordinator
+        let coordinator = makeCoordinator()
+        
+        // Basic setup
+        picker.delegate = coordinator
         picker.allowsEditing = true
         
-        // Enhanced camera settings
+        // Check source type availability
         if sourceType == .camera {
-            picker.cameraFlashMode = .auto
-            picker.showsCameraControls = true
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                picker.sourceType = .camera
+                // Safe camera configuration
+                picker.cameraFlashMode = .auto
+                picker.showsCameraControls = true
+            } else {
+                print("📷 Camera not available, falling back to photo library")
+                picker.sourceType = .photoLibrary
+            }
+        } else {
+            picker.sourceType = sourceType
         }
         
         return picker
     }
     
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+        // No updates needed
+    }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -443,17 +495,25 @@ struct ModernImagePickerView: UIViewControllerRepresentable {
         
         init(_ parent: ModernImagePickerView) {
             self.parent = parent
+            super.init()
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            // Get image safely
             let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
-            parent.onImagePicked(image)
-            parent.dismiss()
+            
+            // Always dismiss on main thread
+            DispatchQueue.main.async {
+                self.parent.onImagePicked(image)
+                self.parent.dismiss()
+            }
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.onImagePicked(nil)
-            parent.dismiss()
+            DispatchQueue.main.async {
+                self.parent.onImagePicked(nil)
+                self.parent.dismiss()
+            }
         }
     }
 }
@@ -478,10 +538,14 @@ struct ModernCameraView: View {
     }
 }
 
-// MARK: - Photo Detail View
+// MARK: - Enhanced Photo Detail View
 struct PhotoDetailView: View {
     let photo: PhotoReference
     @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1.0
+    @State private var lastScale: CGFloat = 1.0
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
     
     var body: some View {
         NavigationView {
@@ -491,25 +555,90 @@ struct PhotoDetailView: View {
                 VStack {
                     Spacer()
                     
-                    // Photo placeholder (in real implementation would show actual image)
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.systemGray5))
-                        .aspectRatio(4/3, contentMode: .fit)
-                        .overlay(
-                            VStack {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 64))
-                                    .foregroundColor(.secondary)
-                                
-                                Text(photo.filename)
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.top)
-                            }
-                        )
-                        .padding()
+                    // Full-size photo with zoom and pan support
+                    Group {
+                        if let image = photo.originalImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .scaleEffect(scale)
+                                .offset(offset)
+                                .gesture(
+                                    SimultaneousGesture(
+                                        MagnificationGesture()
+                                            .onChanged { value in
+                                                let delta = value / lastScale
+                                                lastScale = value
+                                                scale = min(max(scale * delta, 0.5), 4.0) // Limit scale between 0.5x and 4x
+                                            }
+                                            .onEnded { _ in
+                                                lastScale = 1.0
+                                            },
+                                        
+                                        DragGesture()
+                                            .onChanged { value in
+                                                let newOffset = CGSize(
+                                                    width: lastOffset.width + value.translation.width,
+                                                    height: lastOffset.height + value.translation.height
+                                                )
+                                                offset = newOffset
+                                            }
+                                            .onEnded { _ in
+                                                lastOffset = offset
+                                            }
+                                    )
+                                )
+                                .onTapGesture(count: 2) {
+                                    // Double tap to zoom
+                                    withAnimation(.spring()) {
+                                        if scale > 1.0 {
+                                            scale = 1.0
+                                            offset = .zero
+                                            lastOffset = .zero
+                                        } else {
+                                            scale = 2.0
+                                        }
+                                    }
+                                }
+                        } else {
+                            // Placeholder when no image available
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray5))
+                                .aspectRatio(4/3, contentMode: .fit)
+                                .overlay(
+                                    VStack(spacing: 16) {
+                                        Image(systemName: "photo.fill")
+                                            .font(.system(size: 64))
+                                            .foregroundColor(.blue)
+                                        
+                                        VStack(spacing: 8) {
+                                            Text(photo.filename)
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            
+                                            Text("Image not available")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                )
+                                .padding()
+                        }
+                    }
                     
                     Spacer()
+                    
+                    // Photo info
+                    VStack(spacing: 8) {
+                        Text(photo.filename)
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Text("Created: \(formatDate(photo.createdAt))")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    .padding(.bottom, 20)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -523,12 +652,20 @@ struct PhotoDetailView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button("Share", systemImage: "square.and.arrow.up") {
-                            // Share action
+                        if photo.originalImage != nil {
+                            Button("Share", systemImage: "square.and.arrow.up") {
+                                // Share the image
+                                sharePhoto()
+                            }
+                            
+                            Button("Save to Library", systemImage: "square.and.arrow.down") {
+                                // Save to photo library
+                                savePhotoToLibrary()
+                            }
                         }
                         
-                        Button("Save to Library", systemImage: "square.and.arrow.down") {
-                            // Save action
+                        Button("View Info", systemImage: "info.circle") {
+                            // Show photo info
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -537,6 +674,36 @@ struct PhotoDetailView: View {
                 }
             }
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func sharePhoto() {
+        guard let image = photo.originalImage else { return }
+        
+        let activityController = UIActivityViewController(
+            activityItems: [image],
+            applicationActivities: nil
+        )
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityController, animated: true)
+        }
+    }
+    
+    private func savePhotoToLibrary() {
+        guard let image = photo.originalImage else { return }
+        
+        UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+        
+        // In a real app, you'd want to request permission first and show feedback
+        print("📷 Photo saved to library")
     }
 }
 

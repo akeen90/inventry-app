@@ -8,6 +8,11 @@ class PropertyService: ObservableObject {
     
     private let firebaseService = FirebaseService.shared
     
+    // Helper enum for inventory progress levels
+    private enum InventoryProgressLevel {
+        case low, medium, high
+    }
+    
     private func getMockProperties(for userId: String) -> [Property] {
         let landlord = Landlord(name: "Smith Property Ltd", email: "contact@smithproperties.co.uk")
         
@@ -15,31 +20,246 @@ class PropertyService: ObservableObject {
         switch userId {
         case "john.smith@example.com":
             return [
-                Property(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: userId),
-                Property(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: userId),
-                Property(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: userId)
+                createPropertyWithInventory(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: userId, progressLevel: .high),
+                createPropertyWithInventory(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: userId, progressLevel: .medium),
+                createPropertyWithInventory(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: userId, progressLevel: .low)
             ]
         case "sarah.johnson@example.com":
             return [
-                Property(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId),
-                Property(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: userId)
+                createPropertyWithInventory(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId, progressLevel: .medium),
+                createPropertyWithInventory(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: userId, progressLevel: .high)
             ]
         case "admin@inventry.com":
             // Admin sees all properties
             let johnProperties = [
-                Property(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: "john.smith@example.com"),
-                Property(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: "john.smith@example.com"),
-                Property(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: "john.smith@example.com")
+                createPropertyWithInventory(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: "john.smith@example.com", progressLevel: .high),
+                createPropertyWithInventory(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: "john.smith@example.com", progressLevel: .medium),
+                createPropertyWithInventory(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: "john.smith@example.com", progressLevel: .low)
             ]
             let sarahProperties = [
-                Property(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: "sarah.johnson@example.com"),
-                Property(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: "sarah.johnson@example.com")
+                createPropertyWithInventory(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: "sarah.johnson@example.com", progressLevel: .medium),
+                createPropertyWithInventory(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: "sarah.johnson@example.com", progressLevel: .high)
             ]
             return johnProperties + sarahProperties + [
-                Property(name: "Admin Test Property", address: "Admin Building, Corporate District", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId)
+                createPropertyWithInventory(name: "Admin Test Property", address: "Admin Building, Corporate District", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId, progressLevel: .medium)
             ]
         default:
             return []
+        }
+    }
+    
+    // Helper function to create properties with inventory data
+    private func createPropertyWithInventory(name: String, address: String, type: PropertyType, landlord: Landlord, inventoryType: InventoryType, userId: String, progressLevel: InventoryProgressLevel) -> Property {
+        var property = Property(name: name, address: address, type: type, landlord: landlord, inventoryType: inventoryType, userId: userId)
+        
+        // Create inventory report
+        var report = InventoryReport(propertyId: property.id, inventoryType: inventoryType)
+        
+        // Add rooms based on property type
+        var rooms: [Room] = []
+        
+        switch type {
+        case .house:
+            rooms = createHouseRooms(progressLevel: progressLevel)
+        case .flat, .studio:
+            rooms = createFlatRooms(progressLevel: progressLevel)
+        case .commercial:
+            rooms = createCommercialRooms(progressLevel: progressLevel)
+        default:
+            rooms = createDefaultRooms(progressLevel: progressLevel)
+        }
+        
+        report.rooms = rooms
+        property.inventoryReport = report
+        
+        // Set property status based on progress
+        switch progressLevel {
+        case .low:
+            property.status = .draft
+        case .medium:
+            property.status = .inProgress
+        case .high:
+            property.status = .completed
+        }
+        
+        return property
+    }
+    
+    private func createHouseRooms(progressLevel: InventoryProgressLevel) -> [Room] {
+        var livingRoom = Room(name: "Living Room", type: .livingRoom)
+        livingRoom.items = createLivingRoomItems(progressLevel: progressLevel)
+        
+        var kitchen = Room(name: "Kitchen", type: .kitchen)
+        kitchen.items = createKitchenItems(progressLevel: progressLevel)
+        
+        var masterBedroom = Room(name: "Master Bedroom", type: .bedroom)
+        masterBedroom.items = createBedroomItems(progressLevel: progressLevel)
+        
+        var bathroom = Room(name: "Main Bathroom", type: .bathroom)
+        bathroom.items = createBathroomItems(progressLevel: progressLevel)
+        
+        var hallway = Room(name: "Hallway", type: .hallway)
+        hallway.items = createHallwayItems(progressLevel: progressLevel)
+        
+        return [livingRoom, kitchen, masterBedroom, bathroom, hallway]
+    }
+    
+    private func createFlatRooms(progressLevel: InventoryProgressLevel) -> [Room] {
+        var livingRoom = Room(name: "Living Room", type: .livingRoom)
+        livingRoom.items = createLivingRoomItems(progressLevel: progressLevel)
+        
+        var kitchen = Room(name: "Kitchen", type: .kitchen)
+        kitchen.items = createKitchenItems(progressLevel: progressLevel)
+        
+        var bedroom = Room(name: "Bedroom", type: .bedroom)
+        bedroom.items = createBedroomItems(progressLevel: progressLevel)
+        
+        var bathroom = Room(name: "Bathroom", type: .bathroom)
+        bathroom.items = createBathroomItems(progressLevel: progressLevel)
+        
+        return [livingRoom, kitchen, bedroom, bathroom]
+    }
+    
+    private func createCommercialRooms(progressLevel: InventoryProgressLevel) -> [Room] {
+        var mainArea = Room(name: "Main Office Area", type: .other)
+        mainArea.items = createOfficeItems(progressLevel: progressLevel)
+        
+        var reception = Room(name: "Reception", type: .other)
+        reception.items = createReceptionItems(progressLevel: progressLevel)
+        
+        var bathroom = Room(name: "Bathroom", type: .bathroom)
+        bathroom.items = createBathroomItems(progressLevel: progressLevel)
+        
+        return [mainArea, reception, bathroom]
+    }
+    
+    private func createDefaultRooms(progressLevel: InventoryProgressLevel) -> [Room] {
+        var mainRoom = Room(name: "Main Area", type: .other)
+        mainRoom.items = createBasicItems(progressLevel: progressLevel)
+        
+        return [mainRoom]
+    }
+    
+    private func createLivingRoomItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "3-Seater Sofa", category: .furniture, condition: .good),
+            InventoryItem(name: "Coffee Table", category: .furniture, condition: .fair),
+            InventoryItem(name: "TV Stand", category: .furniture, condition: .good),
+            InventoryItem(name: "Carpet", category: .flooring, condition: .good),
+            InventoryItem(name: "Curtains", category: .fixtures, condition: .fair),
+            InventoryItem(name: "Light Fitting", category: .lighting, condition: .excellent)
+        ]
+        
+        // Mark items as complete based on progress level
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createKitchenItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Refrigerator", category: .appliances, condition: .good),
+            InventoryItem(name: "Oven", category: .appliances, condition: .excellent),
+            InventoryItem(name: "Kitchen Cabinets", category: .fixtures, condition: .good),
+            InventoryItem(name: "Worktop", category: .fixtures, condition: .fair),
+            InventoryItem(name: "Kitchen Sink", category: .plumbing, condition: .good),
+            InventoryItem(name: "Tiled Floor", category: .flooring, condition: .excellent)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createBedroomItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Double Bed Frame", category: .furniture, condition: .good),
+            InventoryItem(name: "Wardrobe", category: .furniture, condition: .excellent),
+            InventoryItem(name: "Bedside Tables", category: .furniture, condition: .good),
+            InventoryItem(name: "Carpet", category: .flooring, condition: .good),
+            InventoryItem(name: "Window Blinds", category: .fixtures, condition: .fair)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createBathroomItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Bath Tub", category: .plumbing, condition: .good),
+            InventoryItem(name: "Toilet", category: .plumbing, condition: .excellent),
+            InventoryItem(name: "Wash Basin", category: .plumbing, condition: .good),
+            InventoryItem(name: "Shower", category: .plumbing, condition: .fair),
+            InventoryItem(name: "Bathroom Mirror", category: .fixtures, condition: .good),
+            InventoryItem(name: "Tiled Floor", category: .flooring, condition: .excellent)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createHallwayItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Front Door", category: .doors, condition: .good),
+            InventoryItem(name: "Coat Hooks", category: .fixtures, condition: .fair),
+            InventoryItem(name: "Hallway Light", category: .lighting, condition: .good),
+            InventoryItem(name: "Laminate Flooring", category: .flooring, condition: .excellent)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createOfficeItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Office Desks", category: .furniture, condition: .good),
+            InventoryItem(name: "Office Chairs", category: .furniture, condition: .fair),
+            InventoryItem(name: "Filing Cabinets", category: .furniture, condition: .good),
+            InventoryItem(name: "Carpet Tiles", category: .flooring, condition: .excellent),
+            InventoryItem(name: "Air Conditioning", category: .heating, condition: .good),
+            InventoryItem(name: "Fire Extinguisher", category: .security, condition: .excellent)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createReceptionItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Reception Desk", category: .furniture, condition: .excellent),
+            InventoryItem(name: "Visitor Chairs", category: .furniture, condition: .good),
+            InventoryItem(name: "Reception Lighting", category: .lighting, condition: .good)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func createBasicItems(progressLevel: InventoryProgressLevel) -> [InventoryItem] {
+        var items = [
+            InventoryItem(name: "Floor covering", category: .flooring, condition: .good),
+            InventoryItem(name: "Wall condition", category: .walls, condition: .fair),
+            InventoryItem(name: "Light fittings", category: .lighting, condition: .good)
+        ]
+        
+        markItemsComplete(items: &items, progressLevel: progressLevel)
+        return items
+    }
+    
+    private func markItemsComplete(items: inout [InventoryItem], progressLevel: InventoryProgressLevel) {
+        let completionRatio: Double
+        
+        switch progressLevel {
+        case .low:
+            completionRatio = 0.2 // 20% complete
+        case .medium:
+            completionRatio = 0.6 // 60% complete
+        case .high:
+            completionRatio = 0.9 // 90% complete
+        }
+        
+        let itemsToComplete = Int(Double(items.count) * completionRatio)
+        
+        for i in 0..<itemsToComplete {
+            items[i].isComplete = true
         }
     }
     

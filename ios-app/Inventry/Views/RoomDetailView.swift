@@ -365,14 +365,14 @@ struct AddInventoryItemView: View {
             .disabled(isSubmitting)
         }
         .sheet(isPresented: $showingCamera) {
-            ImagePickerView(sourceType: .camera) { image in
+            SafeImagePickerView(sourceType: .camera) { image in
                 if let image = image {
                     capturedImages.append(image)
                 }
             }
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePickerView(sourceType: .photoLibrary) { image in
+            SafeImagePickerView(sourceType: .photoLibrary) { image in
                 if let image = image {
                     capturedImages.append(image)
                 }
@@ -549,14 +549,14 @@ struct EditInventoryItemView: View {
             .disabled(isSubmitting)
         }
         .sheet(isPresented: $showingCamera) {
-            ImagePickerView(sourceType: .camera) { image in
+            SafeImagePickerView(sourceType: .camera) { image in
                 if let image = image {
                     capturedImages.append(image)
                 }
             }
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePickerView(sourceType: .photoLibrary) { image in
+            SafeImagePickerView(sourceType: .photoLibrary) { image in
                 if let image = image {
                     capturedImages.append(image)
                 }
@@ -596,16 +596,35 @@ struct EditInventoryItemView: View {
     }
 }
 
-struct ImagePickerView: UIViewControllerRepresentable {
+// MARK: - Safe Image Picker
+struct SafeImagePickerView: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage?) -> Void
     @Environment(\.dismiss) private var dismiss
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.sourceType = sourceType
-        picker.delegate = context.coordinator
+        let coordinator = makeCoordinator()
+        
+        // Basic setup with safety checks
+        picker.delegate = coordinator
         picker.allowsEditing = true
+        
+        // Check source type availability
+        if sourceType == .camera {
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                picker.sourceType = .camera
+                // Safe camera configuration
+                picker.cameraFlashMode = .auto
+                picker.showsCameraControls = true
+            } else {
+                print("📷 Camera not available, falling back to photo library")
+                picker.sourceType = .photoLibrary
+            }
+        } else {
+            picker.sourceType = sourceType
+        }
+        
         return picker
     }
     
@@ -616,21 +635,27 @@ struct ImagePickerView: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ImagePickerView
+        let parent: SafeImagePickerView
         
-        init(_ parent: ImagePickerView) {
+        init(_ parent: SafeImagePickerView) {
             self.parent = parent
+            super.init()
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
-            parent.onImagePicked(image)
-            parent.dismiss()
+            
+            DispatchQueue.main.async {
+                self.parent.onImagePicked(image)
+                self.parent.dismiss()
+            }
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.onImagePicked(nil)
-            parent.dismiss()
+            DispatchQueue.main.async {
+                self.parent.onImagePicked(nil)
+                self.parent.dismiss()
+            }
         }
     }
 }

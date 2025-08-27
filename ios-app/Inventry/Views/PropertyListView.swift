@@ -209,6 +209,12 @@ struct ModernPropertyRowView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
+                        if property.hasInventoryData {
+                            Label("\(property.totalInventoryItems) items", systemImage: "list.bullet")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
                         Spacer()
                         
                         Text(property.createdAt, style: .date)
@@ -229,13 +235,13 @@ struct ModernPropertyRowView: View {
                     
                     Spacer()
                     
-                    Text("\(mockProgress)% Complete")
+                    Text("\(property.inventoryProgress)% Complete")
                         .font(.caption)
                         .foregroundColor(statusColor)
                         .fontWeight(.semibold)
                 }
                 
-                ProgressView(value: Double(mockProgress) / 100.0)
+                ProgressView(value: Double(property.inventoryProgress) / 100.0)
                     .progressViewStyle(LinearProgressViewStyle(tint: statusColor))
                     .scaleEffect(x: 1, y: 2, anchor: .center)
             }
@@ -272,15 +278,6 @@ struct ModernPropertyRowView: View {
         }
     }
     
-    private var mockProgress: Int {
-        switch property.status {
-        case .draft: return 0
-        case .inProgress: return Int.random(in: 25...75)
-        case .completed: return 100
-        case .approved: return 100
-        case .archived: return 100
-        }
-    }
 }
 
 struct StatusBadge: View {
