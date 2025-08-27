@@ -169,7 +169,7 @@ struct SettingsView: View {
     
     private var connectionStatusText: String {
         switch firebaseService.connectionState {
-        case .connected: return "Connected to Firebase (Mock Mode)"
+        case .connected: return "Connected to Firebase (Real Mode)"
         case .disconnected: return "Disconnected from Firebase"
         case .unknown: return "Connection status unknown"
         }

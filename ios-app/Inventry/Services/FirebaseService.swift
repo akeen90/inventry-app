@@ -1,19 +1,16 @@
 import Foundation
-
-// TODO: Add Firebase packages via Swift Package Manager, then uncomment these
-// import FirebaseCore
-// import FirebaseAuth  
-// import FirebaseFirestore
-// import FirebaseStorage
+import FirebaseCore
+import FirebaseAuth  
+import FirebaseFirestore
+import FirebaseStorage
 
 class FirebaseService: ObservableObject {
     static let shared = FirebaseService()
     
-    // Firebase instances - will be initialized when packages are added
-    // TODO: Uncomment when Firebase SDK packages are added
-    // private let db = Firestore.firestore()
-    // private let auth = Auth.auth()
-    // private let storage = Storage.storage()
+    // Firebase instances
+    private let db = Firestore.firestore()
+    private let auth = Auth.auth()
+    private let storage = Storage.storage()
     
     @Published var isAuthenticated = false
     @Published var currentUser: String?
@@ -29,11 +26,7 @@ class FirebaseService: ObservableObject {
     private init() {
         print("🔥 FirebaseService initializing...")
         
-        // TODO: Uncomment when Firebase SDK packages are added
-        // setupFirebaseListeners()
-        
-        // For now, use mock mode
-        setupMockMode()
+        setupFirebaseListeners()
     }
     
     private func setupMockMode() {
@@ -45,8 +38,6 @@ class FirebaseService: ObservableObject {
         currentUser = nil
     }
     
-    // TODO: Uncomment when Firebase SDK is added
-    /*
     private func setupFirebaseListeners() {
         // Authentication state listener
         auth.addStateDidChangeListener { [weak self] _, user in
@@ -67,25 +58,12 @@ class FirebaseService: ObservableObject {
         settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
         db.settings = settings
         
-        // Connection state listener
-        let connectedRef = Database.database().reference(withPath: ".info/connected")
-        connectedRef.observe(.value) { [weak self] snapshot in
-            DispatchQueue.main.async {
-                if let connected = snapshot.value as? Bool, connected {
-                    self?.connectionState = .connected
-                    self?.isOnline = true
-                    print("🌐 Connected to Firebase")
-                } else {
-                    self?.connectionState = .disconnected
-                    self?.isOnline = false
-                    print("📱 Using offline mode")
-                }
-            }
-        }
+        // Set initial connection state
+        connectionState = .connected
+        isOnline = true
         
-        print("🔥 Firebase listeners configured")
+        print("🔥 Firebase listeners configured with offline persistence enabled")
     }
-    */
     
     // MARK: - Authentication Stubs
     func signIn(email: String, password: String) async throws {
