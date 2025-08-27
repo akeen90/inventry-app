@@ -603,20 +603,52 @@ struct ModernSegmentedView: View {
     let icon: String
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: icon)
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            Picker(title, selection: $selection) {
-                ForEach(InventoryType.allCases, id: \.self) { type in
-                    Text(type.displayName).tag(type)
+            VStack(spacing: 0) {
+                // Current Selection Display
+                HStack {
+                    Text(selection.displayName)
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
+                
+                // Wheel Picker
+                Picker(title, selection: $selection) {
+                    ForEach(InventoryType.allCases, id: \.self) { type in
+                        Text(type.displayName)
+                            .font(.body)
+                            .tag(type)
+                    }
+                }
+                .pickerStyle(WheelPickerStyle())
+                .frame(height: 120)
+                .clipped()
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(16)
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
         }
     }
 }
