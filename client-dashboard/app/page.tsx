@@ -1,368 +1,545 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { db } from '../lib/firebase'
+import { InventryDataService, type PropertyInventory, type Property } from '../lib/data-services'
+
 export default function ClientDashboard() {
+  const [inventories, setInventories] = useState<PropertyInventory[]>([])
+  const [properties, setProperties] = useState<Property[]>([])
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    inProgress: 0,
+    completed: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  // For demo purposes, we'll use John Smith's client ID
+  const CLIENT_ID = 'john-smith-demo' // In a real app, this would come from authentication
+
+  useEffect(() => {
+    const dataService = new InventryDataService(db)
+    
+    // Load initial data
+    const loadData = async () => {
+      try {
+        const [clientInventories, clientProperties, clientStats] = await Promise.all([
+          dataService.getClientInventories(CLIENT_ID),
+          dataService.getClientProperties(CLIENT_ID), 
+          dataService.getClientStats(CLIENT_ID)
+        ])
+
+        setInventories(clientInventories)
+        setProperties(clientProperties)
+        setStats(clientStats)
+      } catch (error) {
+        console.error('Error loading client data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    // Set up real-time listener for inventories
+    const unsubscribe = dataService.subscribeToClientInventories(CLIENT_ID, (updatedInventories) => {
+      setInventories(updatedInventories)
+      // Recalculate stats
+      const totalProperties = updatedInventories.length
+      const inProgress = updatedInventories.filter(inv => inv.status === 'in-progress').length
+      const completed = updatedInventories.filter(inv => inv.status === 'completed').length
+      setStats({ totalProperties, inProgress, completed })
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8fafc',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #2563eb',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading your properties...</p>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Enhanced Header */}
-      <header className="bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-xl">I</span>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Inventry</h1>
-                  <p className="text-gray-600 font-medium">Client Portal</p>
-                </div>
-              </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{
+        backgroundColor: 'white',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        borderBottom: '1px solid #e5e7eb'
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '18px'
+            }}>
+              I
             </div>
-            
-            <div className="flex items-center space-x-6">
-              {/* Notification Bell */}
-              <button className="relative p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-200">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5-5-5h5zm0 0V3" />
-                </svg>
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">2</div>
-              </button>
-              
-              {/* User Menu */}
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-gray-900">John Smith</p>
-                  <p className="text-sm text-gray-500">Property Owner</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">JS</span>
-                </div>
-                <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg font-medium">
-                  Sign Out
-                </button>
-              </div>
+            <div>
+              <h1 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: 0
+              }}>
+                Inventry
+              </h1>
+              <p style={{
+                fontSize: '14px',
+                color: '#2563eb',
+                margin: 0
+              }}>
+                Client Portal
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
+                margin: 0
+              }}>
+                John Smith
+              </p>
+              <p style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: 0
+              }}>
+                Property Owner
+              </p>
+            </div>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '18px'
+            }}>
+              JS
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-3xl p-8 text-white mb-12 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-4xl font-bold mb-4">Welcome back, John!</h2>
-              <p className="text-xl text-blue-100 mb-6">Manage your property inventories with confidence</p>
-              <div className="grid grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="text-3xl font-bold">3</div>
-                  <div className="text-blue-100 text-sm">Properties</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold">1</div>
-                  <div className="text-blue-100 text-sm">In Progress</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold">2</div>
-                  <div className="text-blue-100 text-sm">Completed</div>
-                </div>
+      {/* Main Content */}
+      <main style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '32px 24px'
+      }}>
+        {/* Welcome Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+          borderRadius: '16px',
+          padding: '32px',
+          color: 'white',
+          marginBottom: '32px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{
+            fontSize: '32px',
+            fontWeight: 'bold',
+            margin: '0 0 12px 0'
+          }}>
+            Welcome back, John!
+          </h2>
+          <p style={{
+            fontSize: '18px',
+            color: 'rgba(255, 255, 255, 0.8)',
+            margin: 0
+          }}>
+            {inventories.length > 0 
+              ? `You have ${stats.inProgress} inventories in progress and ${stats.completed} completed`
+              : 'Your property inventory dashboard is ready'
+            }
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px',
+          marginBottom: '32px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #f3f4f6'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#dbeafe',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  backgroundColor: '#2563eb',
+                  borderRadius: '4px'
+                }}></div>
+              </div>
+              <div style={{ marginLeft: '16px' }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 4px 0'
+                }}>
+                  Total Properties
+                </p>
+                <p style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {stats.totalProperties}
+                </p>
               </div>
             </div>
-            <div className="hidden lg:block">
-              <div className="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M9 7h6m-6 4h6m-6 4h6m-6 4h6" />
-                </svg>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #f3f4f6'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  backgroundColor: '#d97706',
+                  borderRadius: '50%'
+                }}></div>
+              </div>
+              <div style={{ marginLeft: '16px' }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 4px 0'
+                }}>
+                  In Progress
+                </p>
+                <p style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {stats.inProgress}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #f3f4f6'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                backgroundColor: '#d1fae5',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: '#10b981',
+                  borderRadius: '50%'
+                }}></div>
+              </div>
+              <div style={{ marginLeft: '16px' }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 4px 0'
+                }}>
+                  Completed
+                </p>
+                <p style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  {stats.completed}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Properties Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-3xl font-bold text-gray-900">Your Properties</h3>
-              <p className="text-gray-600 mt-2">View and download inventory reports for your properties</p>
-            </div>
-            <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg font-medium">
-              Request New Inventory
-            </button>
+        {/* Properties List */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{
+            padding: '24px 32px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Your Properties
+            </h3>
+            <p style={{
+              color: '#6b7280',
+              margin: 0
+            }}>
+              {inventories.length > 0 
+                ? 'Manage and track your property inventories'
+                : 'No inventories found. Your properties will appear here once they are added.'
+              }
+            </p>
           </div>
-
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {/* Completed Property Card */}
-            <div className="group bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-              <div className="p-8">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M9 7h6m-6 4h6m-6 4h6m-6 4h6" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">Victorian Terrace</h3>
-                      <p className="text-sm text-gray-500 mt-1">London Property</p>
-                    </div>
-                  </div>
-                  <span className="px-4 py-2 inline-flex text-sm font-bold rounded-full bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200">
-                    ✓ Completed
-                  </span>
+          
+          <div style={{ padding: '32px' }}>
+            {inventories.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#6b7280'
+              }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '50%',
+                  margin: '0 auto 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    backgroundColor: '#9ca3af',
+                    borderRadius: '6px'
+                  }}></div>
                 </div>
-                
-                <div className="mb-6">
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm">12 Baker Street, London SW1A 1AA</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                    <div className="text-2xl font-bold text-blue-600">8</div>
-                    <div className="text-xs text-blue-500 font-medium">Rooms</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                    <div className="text-2xl font-bold text-purple-600">156</div>
-                    <div className="text-xs text-purple-500 font-medium">Items</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
-                    <div className="text-2xl font-bold text-orange-600">87</div>
-                    <div className="text-xs text-orange-500 font-medium">Photos</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                    <div className="text-2xl font-bold text-green-600">Nov 15</div>
-                    <div className="text-xs text-green-500 font-medium">Completed</div>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg">
-                    View Report
-                  </button>
-                  <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all duration-200 border border-gray-200">
-                    Download PDF
-                  </button>
-                </div>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
+                  No Properties Yet
+                </h4>
+                <p style={{ margin: 0 }}>
+                  Your property inventories will be displayed here once they are created.
+                </p>
               </div>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {inventories.map((inventory) => {
+                  const statusConfig = {
+                    completed: { label: '✓ Complete', color: '#065f46', bg: '#d1fae5' },
+                    'in-progress': { label: '⏳ In Progress', color: '#92400e', bg: '#fef3c7' },
+                    scheduled: { label: '📅 Scheduled', color: '#374151', bg: '#f3f4f6' }
+                  }
 
-            {/* In Progress Property Card */}
-            <div className="group bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-              <div className="p-8">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M9 7h6m-6 4h6m-6 4h6m-6 4h6" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">City Centre Flat</h3>
-                      <p className="text-sm text-gray-500 mt-1">Birmingham Property</p>
-                    </div>
-                  </div>
-                  <span className="px-4 py-2 inline-flex text-sm font-bold rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200">
-                    ⏳ In Progress
-                  </span>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="flex items-center text-gray-600 mb-4">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm">45 Manchester Road, Birmingham B1 1AA</span>
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Inspection Progress</span>
-                      <span className="text-sm font-bold text-blue-600">75%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full shadow-sm transition-all duration-500" style={{width: '75%'}}></div>
-                    </div>
-                  </div>
-                </div>
+                  const config = statusConfig[inventory.status] || statusConfig.scheduled
 
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                    <div className="text-2xl font-bold text-blue-600">4</div>
-                    <div className="text-xs text-blue-500 font-medium">Rooms</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                    <div className="text-2xl font-bold text-purple-600">67</div>
-                    <div className="text-xs text-purple-500 font-medium">Items</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
-                    <div className="text-2xl font-bold text-orange-600">45</div>
-                    <div className="text-xs text-orange-500 font-medium">Photos</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-100">
-                    <div className="text-2xl font-bold text-yellow-600">Dec 1</div>
-                    <div className="text-xs text-yellow-500 font-medium">Est. Done</div>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button className="flex-1 bg-gray-100 text-gray-400 px-4 py-3 rounded-xl text-sm font-medium cursor-not-allowed border border-gray-200">
-                    Report Pending
-                  </button>
-                  <button className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg">
-                    View Progress
-                  </button>
-                </div>
+                  return (
+                    <div key={inventory.id} style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      transition: 'box-shadow 0.2s'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '16px'
+                      }}>
+                        <div>
+                          <h4 style={{
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            color: '#111827',
+                            margin: '0 0 4px 0'
+                          }}>
+                            {inventory.propertyId} {/* In real app, we'd look up property name */}
+                          </h4>
+                          <p style={{
+                            color: '#6b7280',
+                            margin: '0 0 4px 0'
+                          }}>
+                            Type: {inventory.type.charAt(0).toUpperCase() + inventory.type.slice(1).replace('-', ' ')}
+                          </p>
+                          <p style={{
+                            color: '#6b7280',
+                            margin: 0,
+                            fontSize: '14px'
+                          }}>
+                            {inventory.scheduledDate && `Scheduled: ${inventory.scheduledDate.toLocaleDateString()}`}
+                            {inventory.startDate && `Started: ${inventory.startDate.toLocaleDateString()}`}
+                            {inventory.completedDate && `Completed: ${inventory.completedDate.toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          backgroundColor: config.bg,
+                          color: config.color
+                        }}>
+                          {config.label}
+                        </span>
+                      </div>
+                      
+                      {inventory.status !== 'scheduled' && (
+                        <div>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '14px',
+                            marginBottom: '8px'
+                          }}>
+                            <span style={{ color: '#6b7280', fontWeight: '500' }}>Progress</span>
+                            <span style={{ 
+                              fontWeight: 'bold', 
+                              color: inventory.status === 'completed' ? '#10b981' : '#2563eb' 
+                            }}>
+                              {inventory.progress}%
+                            </span>
+                          </div>
+                          <div style={{
+                            width: '100%',
+                            backgroundColor: '#e5e7eb',
+                            borderRadius: '6px',
+                            height: '12px'
+                          }}>
+                            <div style={{
+                              background: inventory.status === 'completed' 
+                                ? 'linear-gradient(90deg, #10b981, #059669)'
+                                : 'linear-gradient(90deg, #2563eb, #1d4ed8)',
+                              height: '12px',
+                              borderRadius: '6px',
+                              width: `${inventory.progress}%`
+                            }}></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {inventory.notes && (
+                        <div style={{ marginTop: '12px' }}>
+                          <p style={{
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            margin: 0,
+                            fontStyle: 'italic'
+                          }}>
+                            "{inventory.notes}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            </div>
-
-            {/* Scheduled Property Card */}
-            <div className="group bg-white/80 backdrop-blur-sm overflow-hidden shadow-xl rounded-2xl border border-gray-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-              <div className="p-8">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M9 7h6m-6 4h6m-6 4h6m-6 4h6" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">Mountain Cabin</h3>
-                      <p className="text-sm text-gray-500 mt-1">Colorado Property</p>
-                    </div>
-                  </div>
-                  <span className="px-4 py-2 inline-flex text-sm font-bold rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border border-yellow-200">
-                    📅 Scheduled
-                  </span>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="flex items-center text-gray-600 mb-4">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm">789 Pine Road, Aspen CO 81611</span>
-                  </div>
-                  
-                  {/* Countdown Timer */}
-                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 p-4 rounded-xl border border-yellow-100 mb-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-yellow-600">12</div>
-                      <div className="text-xs text-yellow-500 font-medium">Days Until Inspection</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                    <div className="text-2xl font-bold text-blue-600">6</div>
-                    <div className="text-xs text-blue-500 font-medium">Est. Rooms</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                    <div className="text-2xl font-bold text-purple-600">Sarah J.</div>
-                    <div className="text-xs text-purple-500 font-medium">Inspector</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-100">
-                    <div className="text-2xl font-bold text-orange-600">Dec 10</div>
-                    <div className="text-xs text-orange-500 font-medium">Date</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                    <div className="text-2xl font-bold text-green-600">2 Days</div>
-                    <div className="text-xs text-green-500 font-medium">Duration</div>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <button className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-3 rounded-xl text-sm font-medium hover:from-yellow-600 hover:to-amber-600 transition-all duration-200 shadow-lg">
-                    Contact Inspector
-                  </button>
-                  <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all duration-200 border border-gray-200">
-                    Reschedule
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity Section */}
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900">Recent Activity</h2>
-                <p className="text-gray-600 mt-2">Stay updated with the latest inventory progress</p>
-              </div>
-              <button className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 shadow-lg font-medium border border-gray-300">
-                View All Activity
-              </button>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden rounded-2xl border border-gray-100">
-              <div className="divide-y divide-gray-100">
-                <div className="px-8 py-6 hover:bg-gradient-to-r hover:from-green-50/50 hover:to-emerald-50/50 transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">Report completed for Victorian Terrace</p>
-                        <p className="text-sm text-gray-500 mt-1">November 15, 2023 • 156 items documented</p>
-                      </div>
-                    </div>
-                    <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg">
-                      View Report
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="px-8 py-6 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">Inspection started for City Centre Flat</p>
-                        <p className="text-sm text-gray-500 mt-1">November 12, 2023 • 75% complete • 67 items documented</p>
-                      </div>
-                    </div>
-                    <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg">
-                      View Progress
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="px-8 py-6 hover:bg-gradient-to-r hover:from-yellow-50/50 hover:to-amber-50/50 transition-all duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-xl flex items-center justify-center shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">Inspection scheduled for Mountain Cabin</p>
-                        <p className="text-sm text-gray-500 mt-1">November 8, 2023 • Inspector: Sarah J. • 12 days remaining</p>
-                      </div>
-                    </div>
-                    <button className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-6 py-3 rounded-xl text-sm font-medium hover:from-yellow-600 hover:to-amber-600 transition-all duration-200 shadow-lg">
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

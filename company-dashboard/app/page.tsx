@@ -1,271 +1,692 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { db } from '../lib/firebase'
+import { InventryDataService, type PropertyInventory, type Property, type Client, seedSampleData } from '../lib/data-services'
+
 export default function Dashboard() {
+  const [inventories, setInventories] = useState<PropertyInventory[]>([])
+  const [properties, setProperties] = useState<Property[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [stats, setStats] = useState({
+    totalProperties: 0,
+    totalClients: 0,
+    inProgress: 0,
+    completed: 0,
+    completionRate: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const dataService = new InventryDataService(db)
+
+    // Load initial data
+    const loadData = async () => {
+      try {
+        console.log('Starting to load company data...')
+        const [allInventories, allProperties, allClients, companyStats] = await Promise.all([
+          dataService.getAllInventories(),
+          dataService.getAllProperties(),
+          dataService.getAllClients(),
+          dataService.getCompanyStats()
+        ])
+        console.log('Data loaded:', { 
+          inventories: allInventories.length, 
+          properties: allProperties.length, 
+          clients: allClients.length 
+        })
+
+        // If no data exists, seed sample data
+        if (allInventories.length === 0 && allProperties.length === 0 && allClients.length === 0) {
+          console.log('No data found, seeding sample data...')
+          await seedSampleData(dataService)
+          // Reload data after seeding
+          const [newInventories, newProperties, newClients, newStats] = await Promise.all([
+            dataService.getAllInventories(),
+            dataService.getAllProperties(),
+            dataService.getAllClients(),
+            dataService.getCompanyStats()
+          ])
+          setInventories(newInventories)
+          setProperties(newProperties)
+          setClients(newClients)
+          setStats(newStats)
+        } else {
+          setInventories(allInventories)
+          setProperties(allProperties)
+          setClients(allClients)
+          setStats(companyStats)
+        }
+      } catch (error) {
+        console.error('Error loading company data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    // Set up real-time listener for all inventories
+    const unsubscribe = dataService.subscribeToAllInventories((updatedInventories) => {
+      setInventories(updatedInventories)
+      // Recalculate stats
+      const completed = updatedInventories.filter(inv => inv.status === 'completed').length
+      const inProgress = updatedInventories.filter(inv => inv.status === 'in-progress').length
+      const total = updatedInventories.length
+      setStats(prev => ({
+        ...prev,
+        inProgress,
+        completed,
+        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+      }))
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8fafc',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #2563eb',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#6b7280', margin: 0 }}>Loading company dashboard...</p>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
+    <div style={{
+      padding: '32px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '32px',
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc'
+    }}>
+      {/* Modern Page Header */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        padding: '32px',
+        border: '1px solid #f3f4f6'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
           <div>
-            <h1 className="text-3xl font-bold mb-2">Property Inventory Dashboard</h1>
-            <p className="text-blue-100 text-lg">Manage lettings inventories and track progress across your portfolio</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '18px'
+              }}>
+                I
+              </div>
+              <h1 style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: 0
+              }}>
+                Inventry Company Dashboard
+              </h1>
+            </div>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '18px',
+              margin: 0
+            }}>
+              Manage all properties and clients across your organization
+            </p>
           </div>
-          <div className="hidden lg:block">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-2xl font-bold">£2.4M</div>
-              <div className="text-blue-100 text-sm">Portfolio Value</div>
+          <button style={{
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            fontWeight: '600',
+            fontSize: '16px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}>
+            + Add Property
+          </button>
+        </div>
+      </div>
+
+      {/* Enhanced Key Metrics */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '24px'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6',
+          transition: 'box-shadow 0.2s'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              backgroundColor: '#dbeafe',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                backgroundColor: '#2563eb',
+                borderRadius: '4px'
+              }}></div>
+            </div>
+            <div style={{ marginLeft: '16px' }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 4px 0'
+              }}>
+                Total Properties
+              </p>
+              <p style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: '0 0 4px 0'
+              }}>
+                {stats.totalProperties}
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: '#10b981',
+                fontWeight: '500',
+                margin: 0
+              }}>
+                Across all clients
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              backgroundColor: '#d1fae5',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                backgroundColor: '#10b981',
+                borderRadius: '50%'
+              }}></div>
+            </div>
+            <div style={{ marginLeft: '16px' }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 4px 0'
+              }}>
+                Completed
+              </p>
+              <p style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: '0 0 4px 0'
+              }}>
+                {stats.completed}
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: '#10b981',
+                fontWeight: '500',
+                margin: 0
+              }}>
+                {stats.completionRate}% completion rate
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                backgroundColor: '#d97706',
+                borderRadius: '50%'
+              }}></div>
+            </div>
+            <div style={{ marginLeft: '16px' }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 4px 0'
+              }}>
+                In Progress
+              </p>
+              <p style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: '0 0 4px 0'
+              }}>
+                {stats.inProgress}
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: '#d97706',
+                fontWeight: '500',
+                margin: 0
+              }}>
+                Active inventories
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              backgroundColor: '#e0e7ff',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                backgroundColor: '#7c3aed',
+                borderRadius: '6px'
+              }}></div>
+            </div>
+            <div style={{ marginLeft: '16px' }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 4px 0'
+              }}>
+                Active Clients
+              </p>
+              <p style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: '0 0 4px 0'
+              }}>
+                {stats.totalClients}
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: '#7c3aed',
+                fontWeight: '500',
+                margin: 0
+              }}>
+                Property owners
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-600 text-sm font-medium uppercase tracking-wide">Total Properties</p>
-              <p className="text-3xl font-bold text-blue-900 mt-2">4</p>
-              <p className="text-blue-600 text-sm mt-1">Active portfolio</p>
-            </div>
-            <div className="bg-blue-500 p-3 rounded-xl shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-8 0H3m2 0h6M9 7h6m-6 4h6m-6 4h6m-6 4h6" />
-              </svg>
-            </div>
+      {/* Recent Activity & Client Overview */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '32px'
+      }}>
+        {/* Recent Inventories */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{
+            padding: '24px 32px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Recent Inventories
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              margin: 0
+            }}>
+              Latest activity across all properties
+            </p>
+          </div>
+          <div style={{ padding: '24px' }}>
+            {inventories.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#6b7280'
+              }}>
+                <p>No inventories found. Sample data will be created automatically.</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                {inventories.slice(0, 5).map((inventory) => {
+                  const statusConfig = {
+                    completed: { label: 'Complete', color: '#065f46', bg: '#d1fae5' },
+                    'in-progress': { label: 'In Progress', color: '#92400e', bg: '#fef3c7' },
+                    scheduled: { label: 'Scheduled', color: '#374151', bg: '#f3f4f6' }
+                  }
+
+                  const config = statusConfig[inventory.status] || statusConfig.scheduled
+                  const client = clients.find(c => c.id === inventory.clientId)
+
+                  return (
+                    <div key={inventory.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          backgroundColor: config.bg,
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <span style={{
+                            color: config.color,
+                            fontWeight: 'bold',
+                            fontSize: '14px'
+                          }}>
+                            {inventory.type.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p style={{
+                            fontWeight: '600',
+                            color: '#111827',
+                            margin: '0 0 2px 0',
+                            fontSize: '16px'
+                          }}>
+                            {inventory.type.charAt(0).toUpperCase() + inventory.type.slice(1).replace('-', ' ')} Inventory
+                          </p>
+                          <p style={{
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            margin: 0
+                          }}>
+                            Client: {client?.name || 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          backgroundColor: config.bg,
+                          color: config.color,
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '500'
+                        }}>
+                          {config.label}
+                        </span>
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          margin: '4px 0 0 0'
+                        }}>
+                          {inventory.progress}% complete
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            
+            <button style={{
+              width: '100%',
+              marginTop: '24px',
+              color: '#2563eb',
+              fontWeight: '600',
+              padding: '8px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}>
+              View All Inventories →
+            </button>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-600 text-sm font-medium uppercase tracking-wide">In Progress</p>
-              <p className="text-3xl font-bold text-orange-900 mt-2">3</p>
-              <p className="text-orange-600 text-sm mt-1">Active inventories</p>
-            </div>
-            <div className="bg-orange-500 p-3 rounded-xl shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+        {/* Client Overview */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #f3f4f6'
+        }}>
+          <div style={{
+            padding: '24px 32px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Client Overview
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              margin: 0
+            }}>
+              Manage your property owners
+            </p>
           </div>
-        </div>
+          <div style={{ padding: '24px' }}>
+            {clients.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#6b7280'
+              }}>
+                <p>No clients found. Sample data will be created automatically.</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                {clients.map((client) => {
+                  const clientInventories = inventories.filter(inv => inv.clientId === client.id)
+                  const completedCount = clientInventories.filter(inv => inv.status === 'completed').length
+                  const totalCount = clientInventories.length
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-600 text-sm font-medium uppercase tracking-wide">Completed</p>
-              <p className="text-3xl font-bold text-green-900 mt-2">1</p>
-              <p className="text-green-600 text-sm mt-1">Signed off</p>
-            </div>
-            <div className="bg-green-500 p-3 rounded-xl shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-600 text-sm font-medium uppercase tracking-wide">Avg. Progress</p>
-              <p className="text-3xl font-bold text-purple-900 mt-2">55%</p>
-              <p className="text-purple-600 text-sm mt-1">Overall completion</p>
-            </div>
-            <div className="bg-purple-500 p-3 rounded-xl shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Properties Overview */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Active Properties</h3>
-                <p className="text-gray-600 mt-1">Monitor inventory progress across your portfolio</p>
-              </div>
-              <a href="/properties" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                View All
-              </a>
-            </div>
-          </div>
-          <div className="p-6 space-y-4">
-            <a href="/properties/1" className="block group">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100 group-hover:border-blue-300 group-hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">VT</span>
+                  return (
+                    <div key={client.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '12px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          backgroundColor: '#e0e7ff',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <span style={{
+                            color: '#7c3aed',
+                            fontWeight: 'bold',
+                            fontSize: '14px'
+                          }}>
+                            {client.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                        <div>
+                          <p style={{
+                            fontWeight: '600',
+                            color: '#111827',
+                            margin: '0 0 2px 0',
+                            fontSize: '16px'
+                          }}>
+                            {client.name}
+                          </p>
+                          <p style={{
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            margin: 0
+                          }}>
+                            {client.email}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{
+                          fontWeight: '600',
+                          color: '#111827',
+                          margin: '0 0 2px 0',
+                          fontSize: '14px'
+                        }}>
+                          {totalCount} Properties
+                        </p>
+                        <p style={{
+                          fontSize: '12px',
+                          color: totalCount > 0 ? '#10b981' : '#6b7280',
+                          margin: 0
+                        }}>
+                          {totalCount > 0 ? `${completedCount}/${totalCount} completed` : 'No inventories'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Victorian Terrace</h4>
-                      <p className="text-sm text-gray-600">12 Baker Street, London</p>
-                    </div>
-                  </div>
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">Check-in</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium text-blue-600">75% Complete</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full" style={{width: '75%'}}></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">3 of 4 rooms completed • 24 items catalogued</p>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
-            </a>
-
-            <a href="/properties/2" className="block group">
-              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-5 rounded-xl border border-orange-100 group-hover:border-orange-300 group-hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">CC</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">City Centre Flat</h4>
-                      <p className="text-sm text-gray-600">45 Manchester Road, Birmingham</p>
-                    </div>
-                  </div>
-                  <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-medium">Check-out</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium text-orange-600">45% Complete</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full" style={{width: '45%'}}></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">1 of 2 rooms completed • 8 items catalogued</p>
-                  </div>
-                </div>
-              </div>
-            </a>
-
-            <a href="/properties/3" className="block group">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-green-100 group-hover:border-green-300 group-hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">CC</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Countryside Cottage</h4>
-                      <p className="text-sm text-gray-600">Oak Lane, Cotswolds</p>
-                    </div>
-                  </div>
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">Complete ✓</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium text-green-600">100% Complete</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full" style={{width: '100%'}}></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">3 of 3 rooms completed • Signed off by all parties</p>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-
-        {/* Activity Feed */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Live Activity</h3>
-                <p className="text-gray-600 mt-1">Real-time updates</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-gray-500">Live</span>
-              </div>
-            </div>
-          </div>
-          <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
-            <div className="flex items-start space-x-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Kitchen inventory completed</p>
-                <p className="text-xs text-gray-600 mt-1">Victorian Terrace • All appliances catalogued</p>
-                <p className="text-xs text-blue-600 mt-1 font-medium">2 hours ago</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-3 bg-green-50 rounded-xl border border-green-100">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Landlord signature received</p>
-                <p className="text-xs text-gray-600 mt-1">Countryside Cottage • Inventory signed off</p>
-                <p className="text-xs text-green-600 mt-1 font-medium">4 hours ago</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-3 bg-orange-50 rounded-xl border border-orange-100">
-              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">New check-in started</p>
-                <p className="text-xs text-gray-600 mt-1">Modern Studio • Tenant: Emma Davis</p>
-                <p className="text-xs text-orange-600 mt-1 font-medium">6 hours ago</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-3 bg-purple-50 rounded-xl border border-purple-100">
-              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Room added to inventory</p>
-                <p className="text-xs text-gray-600 mt-1">City Centre Flat • Master Bedroom</p>
-                <p className="text-xs text-purple-600 mt-1 font-medium">1 day ago</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-4 p-3 bg-red-50 rounded-xl border border-red-100">
-              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.854-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Item condition updated</p>
-                <p className="text-xs text-gray-600 mt-1">Coffee Table marked as damaged</p>
-                <p className="text-xs text-red-600 mt-1 font-medium">2 days ago</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
