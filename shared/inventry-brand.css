@@ -1,0 +1,555 @@
+/* Inventry Brand System CSS */
+:root {
+  /* Brand Colors */
+  --inventry-primary-blue: #3366CC;
+  --inventry-primary-purple: #8033CC;
+  --inventry-primary-gradient: linear-gradient(135deg, #3366CC 0%, #8033CC 100%);
+  
+  --inventry-secondary-orange: #FF9933;
+  --inventry-secondary-green: #33B366;
+  --inventry-secondary-red: #E64D4D;
+  
+  --inventry-neutral-dark: #26262E;
+  --inventry-neutral-medium: #666680;
+  --inventry-neutral-light: #F2F2F7;
+  --inventry-neutral-white: #FFFFFF;
+  
+  --inventry-status-success: #34C759;
+  --inventry-status-warning: #FFCC00;
+  --inventry-status-error: #FF3B30;
+  --inventry-status-info: #007AFF;
+  
+  /* Gradients */
+  --inventry-gradient-primary: linear-gradient(135deg, #3366CC 0%, #8033CC 100%);
+  --inventry-gradient-secondary: linear-gradient(135deg, #FF9933 0%, #FF6B1A 100%);
+  --inventry-gradient-background: linear-gradient(180deg, #FFFFFF 0%, #F2F2F7 100%);
+  --inventry-gradient-card: linear-gradient(135deg, #FFFFFF 0%, rgba(255,255,255,0.8) 100%);
+  
+  /* Typography */
+  --inventry-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --inventry-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  /* Font Sizes */
+  --inventry-text-xs: 0.75rem;
+  --inventry-text-sm: 0.875rem;
+  --inventry-text-base: 1rem;
+  --inventry-text-lg: 1.125rem;
+  --inventry-text-xl: 1.25rem;
+  --inventry-text-2xl: 1.5rem;
+  --inventry-text-3xl: 1.875rem;
+  --inventry-text-4xl: 2.25rem;
+  --inventry-text-5xl: 3rem;
+  
+  /* Font Weights */
+  --inventry-font-light: 300;
+  --inventry-font-normal: 400;
+  --inventry-font-medium: 500;
+  --inventry-font-semibold: 600;
+  --inventry-font-bold: 700;
+  --inventry-font-extrabold: 800;
+  
+  /* Spacing */
+  --inventry-space-xs: 0.25rem;
+  --inventry-space-sm: 0.5rem;
+  --inventry-space-md: 1rem;
+  --inventry-space-lg: 1.5rem;
+  --inventry-space-xl: 2rem;
+  --inventry-space-2xl: 3rem;
+  --inventry-space-3xl: 4rem;
+  
+  /* Border Radius */
+  --inventry-radius-sm: 0.5rem;
+  --inventry-radius-md: 0.75rem;
+  --inventry-radius-lg: 1rem;
+  --inventry-radius-xl: 1.25rem;
+  --inventry-radius-2xl: 1.5rem;
+  --inventry-radius-full: 9999px;
+  
+  /* Shadows */
+  --inventry-shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.04);
+  --inventry-shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  --inventry-shadow-lg: 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+  --inventry-shadow-xl: 0 8px 20px 0 rgba(0, 0, 0, 0.15);
+  --inventry-shadow-accent: 0 2px 8px 0 rgba(51, 102, 204, 0.2);
+  
+  /* Animations */
+  --inventry-duration-fast: 150ms;
+  --inventry-duration-normal: 300ms;
+  --inventry-duration-slow: 500ms;
+  --inventry-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base Styles */
+.inventry-app {
+  font-family: var(--inventry-font-family);
+  color: var(--inventry-neutral-dark);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.inventry-gradient-bg {
+  background: var(--inventry-gradient-background);
+  min-height: 100vh;
+}
+
+/* Logo Components */
+.inventry-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--inventry-space-sm);
+}
+
+.inventry-logo-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--inventry-gradient-primary);
+  border-radius: var(--inventry-radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: var(--inventry-font-bold);
+  font-size: var(--inventry-text-xl);
+  box-shadow: var(--inventry-shadow-accent);
+}
+
+.inventry-logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.inventry-logo-title {
+  font-size: var(--inventry-text-2xl);
+  font-weight: var(--inventry-font-bold);
+  background: var(--inventry-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.inventry-logo-subtitle {
+  font-size: var(--inventry-text-sm);
+  color: var(--inventry-neutral-medium);
+  font-weight: var(--inventry-font-medium);
+  margin: 0;
+}
+
+/* Button Components */
+.inventry-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--inventry-space-sm);
+  padding: var(--inventry-space-md) var(--inventry-space-lg);
+  border-radius: var(--inventry-radius-lg);
+  font-size: var(--inventry-text-base);
+  font-weight: var(--inventry-font-semibold);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: all var(--inventry-duration-normal) var(--inventry-ease);
+  text-decoration: none;
+  outline: none;
+}
+
+.inventry-btn:focus-visible {
+  outline: 2px solid var(--inventry-primary-blue);
+  outline-offset: 2px;
+}
+
+.inventry-btn-primary {
+  background: var(--inventry-gradient-primary);
+  color: white;
+  box-shadow: var(--inventry-shadow-accent);
+}
+
+.inventry-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px 0 rgba(51, 102, 204, 0.3);
+}
+
+.inventry-btn-secondary {
+  background: var(--inventry-neutral-light);
+  color: var(--inventry-neutral-dark);
+  box-shadow: var(--inventry-shadow-sm);
+}
+
+.inventry-btn-secondary:hover {
+  background: #E8E8ED;
+  transform: translateY(-1px);
+  box-shadow: var(--inventry-shadow-md);
+}
+
+.inventry-btn-accent {
+  background: var(--inventry-gradient-secondary);
+  color: white;
+  box-shadow: 0 2px 8px 0 rgba(255, 153, 51, 0.2);
+}
+
+.inventry-btn-accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px 0 rgba(255, 153, 51, 0.3);
+}
+
+/* Card Components */
+.inventry-card {
+  background: var(--inventry-neutral-white);
+  border-radius: var(--inventry-radius-lg);
+  padding: var(--inventry-space-lg);
+  box-shadow: var(--inventry-shadow-md);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all var(--inventry-duration-normal) var(--inventry-ease);
+}
+
+.inventry-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--inventry-shadow-lg);
+}
+
+.inventry-card-elevated {
+  background: var(--inventry-gradient-card);
+  border-radius: var(--inventry-radius-xl);
+  padding: var(--inventry-space-xl);
+  box-shadow: var(--inventry-shadow-lg);
+  backdrop-filter: blur(10px);
+}
+
+.inventry-card-gradient {
+  background: var(--inventry-gradient-primary);
+  color: white;
+  border: none;
+}
+
+.inventry-card-gradient .inventry-text-secondary {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Status Components */
+.inventry-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--inventry-space-xs);
+  padding: var(--inventry-space-xs) var(--inventry-space-md);
+  border-radius: var(--inventry-radius-full);
+  font-size: var(--inventry-text-xs);
+  font-weight: var(--inventry-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.inventry-status-success {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--inventry-status-success);
+}
+
+.inventry-status-warning {
+  background: rgba(255, 204, 0, 0.15);
+  color: #B8860B;
+}
+
+.inventry-status-error {
+  background: rgba(255, 59, 48, 0.15);
+  color: var(--inventry-status-error);
+}
+
+.inventry-status-info {
+  background: rgba(51, 102, 204, 0.15);
+  color: var(--inventry-primary-blue);
+}
+
+/* Typography */
+.inventry-heading-1 {
+  font-size: var(--inventry-text-4xl);
+  font-weight: var(--inventry-font-bold);
+  margin: 0 0 var(--inventry-space-lg) 0;
+  line-height: 1.2;
+}
+
+.inventry-heading-2 {
+  font-size: var(--inventry-text-3xl);
+  font-weight: var(--inventry-font-bold);
+  margin: 0 0 var(--inventry-space-md) 0;
+  line-height: 1.3;
+}
+
+.inventry-heading-3 {
+  font-size: var(--inventry-text-2xl);
+  font-weight: var(--inventry-font-semibold);
+  margin: 0 0 var(--inventry-space-md) 0;
+  line-height: 1.4;
+}
+
+.inventry-text-primary {
+  color: var(--inventry-neutral-dark);
+}
+
+.inventry-text-secondary {
+  color: var(--inventry-neutral-medium);
+}
+
+.inventry-text-brand {
+  background: var(--inventry-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.inventry-text-small {
+  font-size: var(--inventry-text-sm);
+}
+
+.inventry-text-large {
+  font-size: var(--inventry-text-lg);
+}
+
+/* Progress Components */
+.inventry-progress {
+  width: 100%;
+  height: 8px;
+  background: var(--inventry-neutral-light);
+  border-radius: var(--inventry-radius-sm);
+  overflow: hidden;
+}
+
+.inventry-progress-bar {
+  height: 100%;
+  background: var(--inventry-gradient-primary);
+  border-radius: var(--inventry-radius-sm);
+  transition: width var(--inventry-duration-slow) var(--inventry-ease);
+}
+
+.inventry-progress-ring {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.inventry-progress-ring svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.inventry-progress-ring-bg {
+  fill: none;
+  stroke: var(--inventry-neutral-light);
+  stroke-width: 8;
+}
+
+.inventry-progress-ring-fill {
+  fill: none;
+  stroke: var(--inventry-primary-blue);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--inventry-duration-slow) var(--inventry-ease);
+}
+
+/* Grid System */
+.inventry-grid {
+  display: grid;
+  gap: var(--inventry-space-lg);
+}
+
+.inventry-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.inventry-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.inventry-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+  .inventry-grid-2,
+  .inventry-grid-3,
+  .inventry-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Utility Classes */
+.inventry-flex {
+  display: flex;
+}
+
+.inventry-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inventry-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inventry-hidden {
+  display: none;
+}
+
+.inventry-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Spacing Utilities */
+.inventry-p-xs { padding: var(--inventry-space-xs); }
+.inventry-p-sm { padding: var(--inventry-space-sm); }
+.inventry-p-md { padding: var(--inventry-space-md); }
+.inventry-p-lg { padding: var(--inventry-space-lg); }
+.inventry-p-xl { padding: var(--inventry-space-xl); }
+
+.inventry-m-xs { margin: var(--inventry-space-xs); }
+.inventry-m-sm { margin: var(--inventry-space-sm); }
+.inventry-m-md { margin: var(--inventry-space-md); }
+.inventry-m-lg { margin: var(--inventry-space-lg); }
+.inventry-m-xl { margin: var(--inventry-space-xl); }
+
+/* Animation Classes */
+.inventry-fade-in {
+  animation: inventryFadeIn var(--inventry-duration-normal) var(--inventry-ease);
+}
+
+.inventry-slide-up {
+  animation: inventrySlideUp var(--inventry-duration-normal) var(--inventry-ease);
+}
+
+.inventry-scale-in {
+  animation: inventryScaleIn var(--inventry-duration-normal) var(--inventry-ease);
+}
+
+@keyframes inventryFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes inventrySlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes inventryScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Component Specific Styles */
+.inventry-property-card {
+  background: white;
+  border-radius: var(--inventry-radius-xl);
+  padding: var(--inventry-space-lg);
+  box-shadow: var(--inventry-shadow-md);
+  transition: all var(--inventry-duration-normal) var(--inventry-ease);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.inventry-property-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--inventry-shadow-xl);
+}
+
+.inventry-stat-card {
+  text-align: center;
+  padding: var(--inventry-space-md);
+  background: white;
+  border-radius: var(--inventry-radius-md);
+  box-shadow: var(--inventry-shadow-sm);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.inventry-stat-value {
+  font-size: var(--inventry-text-2xl);
+  font-weight: var(--inventry-font-bold);
+  color: var(--inventry-primary-blue);
+  margin: 0;
+}
+
+.inventry-stat-label {
+  font-size: var(--inventry-text-sm);
+  color: var(--inventry-neutral-medium);
+  font-weight: var(--inventry-font-medium);
+  margin: var(--inventry-space-xs) 0 0 0;
+}
+
+/* Input Components */
+.inventry-input {
+  width: 100%;
+  padding: var(--inventry-space-md);
+  border: 1px solid #E5E5E7;
+  border-radius: var(--inventry-radius-md);
+  font-size: var(--inventry-text-base);
+  font-family: inherit;
+  background: white;
+  box-shadow: var(--inventry-shadow-sm);
+  transition: all var(--inventry-duration-fast) var(--inventry-ease);
+}
+
+.inventry-input:focus {
+  outline: none;
+  border-color: var(--inventry-primary-blue);
+  box-shadow: 0 0 0 3px rgba(51, 102, 204, 0.1);
+}
+
+.inventry-input::placeholder {
+  color: var(--inventry-neutral-medium);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --inventry-neutral-dark: #FFFFFF;
+    --inventry-neutral-medium: #A0A0AB;
+    --inventry-neutral-light: #1C1C1E;
+    --inventry-neutral-white: #000000;
+  }
+  
+  .inventry-card,
+  .inventry-property-card,
+  .inventry-stat-card,
+  .inventry-input {
+    background: #1C1C1E;
+    border-color: #3A3A3C;
+  }
+  
+  .inventry-btn-secondary {
+    background: #3A3A3C;
+    color: white;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .inventry-app {
+    background: white !important;
+  }
+  
+  .inventry-card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+  
+  .inventry-btn {
+    display: none;
+  }
+}
