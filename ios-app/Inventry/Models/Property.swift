@@ -32,6 +32,7 @@ enum PropertyType: String, CaseIterable, Codable {
     case maisonette = "maisonette"
     case bungalow = "bungalow"
     case studio = "studio"
+    case bedsit = "bedsit"
     case commercial = "commercial"
     case other = "other"
     
@@ -42,6 +43,7 @@ enum PropertyType: String, CaseIterable, Codable {
         case .maisonette: return "Maisonette"
         case .bungalow: return "Bungalow"
         case .studio: return "Studio"
+        case .bedsit: return "Bedsit"
         case .commercial: return "Commercial"
         case .other: return "Other"
         }

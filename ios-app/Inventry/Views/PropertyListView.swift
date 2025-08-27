@@ -3,48 +3,69 @@ import SwiftUI
 struct PropertyListView: View {
     @StateObject private var propertyService = PropertyService()
     @State private var showingAddProperty = false
+    @State private var searchText = ""
+    
+    var filteredProperties: [Property] {
+        if searchText.isEmpty {
+            return propertyService.properties
+        } else {
+            return propertyService.properties.filter { property in
+                property.name.localizedCaseInsensitiveContains(searchText) ||
+                property.address.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(propertyService.properties) { property in
-                    NavigationLink(destination: PropertyDetailView(property: property)) {
-                        PropertyRowView(property: property)
+            VStack(spacing: 0) {
+                // Header Stats Section
+                HeaderStatsView(properties: propertyService.properties)
+                
+                // Properties List
+                if filteredProperties.isEmpty && propertyService.properties.isEmpty {
+                    EmptyStateView(showingAddProperty: $showingAddProperty)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(filteredProperties) { property in
+                                NavigationLink(destination: PropertyDetailView(property: property)) {
+                                    ModernPropertyRowView(property: property)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
                     }
                 }
             }
+            .background(
+                LinearGradient(
+                    colors: [Color(.systemGroupedBackground), Color(.secondarySystemGroupedBackground)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .searchable(text: $searchText, prompt: "Search properties...")
             .refreshable {
                 await propertyService.loadProperties()
             }
-            .overlay {
-                if propertyService.properties.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "house")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 8) {
-                            Text("No Properties")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                            
-                            Text("Tap the + button to add your first property")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(UIColor.systemBackground))
-                }
-            }
-            .navigationTitle("Properties")
+            .navigationTitle("Portfolio")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingAddProperty = true
                     } label: {
-                        Image(systemName: "plus")
+                        Label("Add Property", systemImage: "plus")
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
                     }
                 }
             }
@@ -62,54 +83,289 @@ struct PropertyListView: View {
     }
 }
 
-struct PropertyRowView: View {
+struct HeaderStatsView: View {
+    let properties: [Property]
+    
+    var stats: PropertyStats {
+        PropertyStats(properties: properties)
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Total",
+                    value: "\(stats.total)",
+                    subtitle: "Properties",
+                    color: .blue,
+                    icon: "building.2"
+                )
+                
+                StatCard(
+                    title: "Active",
+                    value: "\(stats.inProgress)",
+                    subtitle: "In Progress",
+                    color: .orange,
+                    icon: "clock"
+                )
+                
+                StatCard(
+                    title: "Complete",
+                    value: "\(stats.completed)",
+                    subtitle: "Signed Off",
+                    color: .green,
+                    icon: "checkmark.circle"
+                )
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+}
+
+struct StatCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+    let color: Color
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(color)
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fontWeight(.medium)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+}
+
+struct ModernPropertyRowView: View {
     let property: Property
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(property.name)
-                    .font(.headline)
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                // Property Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(LinearGradient(colors: [statusColor, statusColor.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 60, height: 60)
+                    
+                    Image(systemName: propertyIcon)
+                        .font(.title2)
+                        .foregroundColor(.white)
+                }
                 
-                Spacer()
-                
-                Text(property.status.displayName)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor.opacity(0.2))
-                    .foregroundColor(statusColor)
-                    .cornerRadius(8)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(property.name)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        StatusBadge(status: property.status)
+                    }
+                    
+                    Text(property.address)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                    
+                    HStack(spacing: 16) {
+                        Label(property.type.displayName, systemImage: "house.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        Text(property.createdAt, style: .date)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
+            .padding(20)
             
-            Text(property.address)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            HStack {
-                Label(property.type.displayName, systemImage: "house")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            // Progress Bar (Mock Progress)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Inspection Progress")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fontWeight(.medium)
+                    
+                    Spacer()
+                    
+                    Text("\(mockProgress)% Complete")
+                        .font(.caption)
+                        .foregroundColor(statusColor)
+                        .fontWeight(.semibold)
+                }
                 
-                Spacer()
-                
-                Text(property.createdAt, style: .date)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                ProgressView(value: Double(mockProgress) / 100.0)
+                    .progressViewStyle(LinearProgressViewStyle(tint: statusColor))
+                    .scaleEffect(x: 1, y: 2, anchor: .center)
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
-        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+        )
     }
     
     private var statusColor: Color {
-        switch property.status.color {
-        case "gray": return .gray
-        case "blue": return .blue
-        case "green": return .green
-        case "purple": return .purple
-        case "red": return .red
-        default: return .gray
+        switch property.status {
+        case .draft: return .gray
+        case .inProgress: return .orange
+        case .completed: return .green
+        case .approved: return .blue
+        case .archived: return .purple
         }
+    }
+    
+    private var propertyIcon: String {
+        switch property.type {
+        case .house: return "house.fill"
+        case .flat: return "building.fill"
+        case .studio: return "building.2.fill"
+        case .bedsit: return "bed.double.fill"
+        case .maisonette: return "building.2.crop.circle.fill"
+        case .bungalow: return "house.circle.fill"
+        case .commercial: return "building.columns.fill"
+        case .other: return "questionmark.square.fill"
+        }
+    }
+    
+    private var mockProgress: Int {
+        switch property.status {
+        case .draft: return 0
+        case .inProgress: return Int.random(in: 25...75)
+        case .completed: return 100
+        case .approved: return 100
+        case .archived: return 100
+        }
+    }
+}
+
+struct StatusBadge: View {
+    let status: PropertyStatus
+    
+    var body: some View {
+        Text(status.displayName)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(statusColor.opacity(0.15))
+            )
+            .foregroundColor(statusColor)
+            .overlay(
+                Capsule()
+                    .stroke(statusColor.opacity(0.3), lineWidth: 1)
+            )
+    }
+    
+    private var statusColor: Color {
+        switch status {
+        case .draft: return .gray
+        case .inProgress: return .orange
+        case .completed: return .green
+        case .approved: return .blue
+        case .archived: return .purple
+        }
+    }
+}
+
+struct EmptyStateView: View {
+    @Binding var showingAddProperty: Bool
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.blue.opacity(0.1), .purple.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 120, height: 120)
+                    
+                    Image(systemName: "building.2")
+                        .font(.system(size: 48, weight: .light))
+                        .foregroundColor(.blue)
+                }
+                
+                VStack(spacing: 8) {
+                    Text("Welcome to Inventry")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Start building your property portfolio by adding your first property inventory.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+            }
+            
+            Button {
+                showingAddProperty = true
+            } label: {
+                HStack {
+                    Image(systemName: "plus")
+                    Text("Add Your First Property")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
+                )
+                .clipShape(Capsule())
+                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(32)
+    }
+}
+
+struct PropertyStats {
+    let total: Int
+    let inProgress: Int
+    let completed: Int
+    
+    init(properties: [Property]) {
+        self.total = properties.count
+        self.inProgress = properties.filter { $0.status == .inProgress }.count
+        self.completed = properties.filter { $0.status == .completed }.count
     }
 }
 
@@ -120,41 +376,114 @@ struct AddPropertyView: View {
     @State private var name = ""
     @State private var address = ""
     @State private var selectedType = PropertyType.house
+    @State private var selectedInventoryType = InventoryType.checkIn
     @State private var isSubmitting = false
+    
+    var isValidForm: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     
     var body: some View {
         NavigationView {
-            Form {
-                Section("Property Details") {
-                    TextField("Property Name", text: $name)
-                    TextField("Address", text: $address, axis: .vertical)
-                        .lineLimit(2...4)
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.blue)
+                        
+                        Text("Add New Property")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text("Create a new property inventory to get started")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 20)
                     
-                    Picker("Property Type", selection: $selectedType) {
-                        ForEach(PropertyType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    VStack(spacing: 20) {
+                        // Property Name
+                        ModernTextFieldView(
+                            title: "Property Name",
+                            text: $name,
+                            placeholder: "e.g. Victorian Terrace",
+                            icon: "building.2"
+                        )
+                        
+                        // Address
+                        ModernTextFieldView(
+                            title: "Property Address",
+                            text: $address,
+                            placeholder: "Full address including postcode",
+                            icon: "location",
+                            isMultiline: true
+                        )
+                        
+                        // Property Type
+                        ModernPickerView(
+                            title: "Property Type",
+                            selection: $selectedType,
+                            icon: "house"
+                        )
+                        
+                        // Inventory Type
+                        ModernSegmentedView(
+                            title: "Inventory Type",
+                            selection: $selectedInventoryType,
+                            icon: "doc.text"
+                        )
+                    }
+                    
+                    Spacer(minLength: 40)
+                    
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button {
+                            Task {
+                                await saveProperty()
+                            }
+                        } label: {
+                            HStack {
+                                if isSubmitting {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "plus")
+                                }
+                                Text(isSubmitting ? "Creating..." : "Create Property")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: isValidForm ? [.blue, .purple] : [.gray.opacity(0.5)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(color: isValidForm ? .blue.opacity(0.3) : .clear, radius: 8, x: 0, y: 4)
                         }
-                    }
-                }
-            }
-            .navigationTitle("Add Property")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await saveProperty()
+                        .disabled(!isValidForm || isSubmitting)
+                        
+                        Button("Cancel") {
+                            dismiss()
                         }
+                        .font(.headline)
+                        .foregroundColor(.secondary)
                     }
-                    .disabled(isSubmitting || name.isEmpty || address.isEmpty)
                 }
+                .padding(.horizontal, 24)
             }
+            .background(Color(.systemGroupedBackground))
+            .navigationBarHidden(true)
             .disabled(isSubmitting)
         }
     }
@@ -168,7 +497,7 @@ struct AddPropertyView: View {
             address: address.trimmingCharacters(in: .whitespacesAndNewlines),
             type: selectedType,
             landlord: defaultLandlord,
-            inventoryType: .checkIn
+            inventoryType: selectedInventoryType
         )
         
         await propertyService.addProperty(property)
@@ -178,6 +507,107 @@ struct AddPropertyView: View {
         }
         
         isSubmitting = false
+    }
+}
+
+struct ModernTextFieldView: View {
+    let title: String
+    @Binding var text: String
+    let placeholder: String
+    let icon: String
+    var isMultiline = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Group {
+                if isMultiline {
+                    TextField(placeholder, text: $text, axis: .vertical)
+                        .lineLimit(2...4)
+                } else {
+                    TextField(placeholder, text: $text)
+                }
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(text.isEmpty ? Color(.systemGray4) : .blue, lineWidth: 1)
+            )
+        }
+    }
+}
+
+struct ModernPickerView: View {
+    let title: String
+    @Binding var selection: PropertyType
+    let icon: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Picker(title, selection: $selection) {
+                ForEach(PropertyType.allCases, id: \.self) { type in
+                    HStack {
+                        Image(systemName: iconForPropertyType(type))
+                        Text(type.displayName)
+                    }
+                    .tag(type)
+                }
+            }
+            .pickerStyle(MenuPickerStyle())
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
+        }
+    }
+    
+    private func iconForPropertyType(_ type: PropertyType) -> String {
+        switch type {
+        case .house: return "house.fill"
+        case .flat: return "building.fill"
+        case .studio: return "building.2.fill"
+        case .bedsit: return "bed.double.fill"
+        case .maisonette: return "building.2.crop.circle.fill"
+        case .bungalow: return "house.circle.fill"
+        case .commercial: return "building.columns.fill"
+        case .other: return "questionmark.square.fill"
+        }
+    }
+}
+
+struct ModernSegmentedView: View {
+    let title: String
+    @Binding var selection: InventoryType
+    let icon: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Picker(title, selection: $selection) {
+                ForEach(InventoryType.allCases, id: \.self) { type in
+                    Text(type.displayName).tag(type)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+        }
     }
 }
 
