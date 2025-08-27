@@ -84,4 +84,93 @@ class PropertyService: ObservableObject {
     private func loadMockData() {
         properties = mockProperties
     }
+    
+    // MARK: - Inspection Workflow
+    
+    func startInspection(for property: Property) async throws -> Property {
+        isLoading = true
+        defer { isLoading = false }
+        
+        var updatedProperty = property
+        updatedProperty.status = .inProgress
+        updatedProperty.updatedAt = Date()
+        
+        await updateProperty(updatedProperty)
+        return updatedProperty
+    }
+    
+    func completeInspection(for property: Property) async throws -> Property {
+        isLoading = true
+        defer { isLoading = false }
+        
+        var updatedProperty = property
+        updatedProperty.status = .completed
+        updatedProperty.updatedAt = Date()
+        
+        await updateProperty(updatedProperty)
+        return updatedProperty
+    }
+    
+    func generateDefaultRooms(for property: Property) async throws -> [Room] {
+        // Create default rooms based on property type
+        var defaultRooms: [Room] = []
+        
+        switch property.type {
+        case .flat, .studio:
+            defaultRooms = [
+                Room(name: "Living Room", type: .livingRoom),
+                Room(name: "Bedroom", type: .bedroom),
+                Room(name: "Kitchen", type: .kitchen),
+                Room(name: "Bathroom", type: .bathroom)
+            ]
+        case .house:
+            defaultRooms = [
+                Room(name: "Living Room", type: .livingRoom),
+                Room(name: "Kitchen", type: .kitchen),
+                Room(name: "Dining Room", type: .diningRoom),
+                Room(name: "Master Bedroom", type: .bedroom),
+                Room(name: "Bedroom 2", type: .bedroom),
+                Room(name: "Bathroom", type: .bathroom),
+                Room(name: "Hallway", type: .hallway)
+            ]
+        default:
+            defaultRooms = [
+                Room(name: "Main Area", type: .other),
+                Room(name: "Bathroom", type: .bathroom)
+            ]
+        }
+        
+        return defaultRooms
+    }
+    
+    // MARK: - Report Generation
+    
+    func generateInventoryReport(for property: Property, rooms: [Room] = []) async throws -> InventoryReport {
+        isLoading = true
+        defer { isLoading = false }
+        
+        // TODO: Implement actual report generation
+        try await Task.sleep(nanoseconds: 2_000_000_000) // Simulate report generation
+        
+        var report = InventoryReport(propertyId: property.id, inventoryType: property.inventoryType)
+        report.rooms = rooms
+        return report
+    }
+}
+
+enum PropertyServiceError: LocalizedError {
+    case inspectionIncomplete([String])
+    case roomNotFound
+    case invalidProperty
+    
+    var errorDescription: String? {
+        switch self {
+        case .inspectionIncomplete(let roomNames):
+            return "Inspection incomplete for rooms: \(roomNames.joined(separator: ", "))"
+        case .roomNotFound:
+            return "Room not found"
+        case .invalidProperty:
+            return "Invalid property data"
+        }
+    }
 }
