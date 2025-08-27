@@ -9,6 +9,7 @@ import Foundation
 class FirebaseService: ObservableObject {
     static let shared = FirebaseService()
     
+    // Firebase instances - will be initialized when packages are added
     // TODO: Uncomment when Firebase SDK packages are added
     // private let db = Firestore.firestore()
     // private let auth = Auth.auth()
@@ -17,24 +18,74 @@ class FirebaseService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentUser: String?
     @Published var isOnline = false
+    @Published var connectionState: ConnectionState = .unknown
+    
+    enum ConnectionState {
+        case connected
+        case disconnected
+        case unknown
+    }
     
     private init() {
-        // TODO: Uncomment when Firebase SDK is added
-        /*
-        // Check authentication state
+        print("🔥 FirebaseService initializing...")
+        
+        // TODO: Uncomment when Firebase SDK packages are added
+        // setupFirebaseListeners()
+        
+        // For now, use mock mode
+        setupMockMode()
+    }
+    
+    private func setupMockMode() {
+        print("📱 Using Firebase mock mode for development")
+        connectionState = .connected
+        isOnline = true
+        // Start with unauthenticated state
+        isAuthenticated = false
+        currentUser = nil
+    }
+    
+    // TODO: Uncomment when Firebase SDK is added
+    /*
+    private func setupFirebaseListeners() {
+        // Authentication state listener
         auth.addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isAuthenticated = user != nil
+                self?.currentUser = user?.email
                 if let user = user {
-                    print("User signed in: \(user.email ?? "No email")")
+                    print("✅ User signed in: \(user.email ?? "No email")")
                 } else {
-                    print("User signed out")
+                    print("👤 User signed out")
                 }
             }
         }
-        */
-        print("FirebaseService initialized (stub mode)")
+        
+        // Enable offline persistence
+        let settings = FirestoreSettings()
+        settings.isPersistenceEnabled = true
+        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        db.settings = settings
+        
+        // Connection state listener
+        let connectedRef = Database.database().reference(withPath: ".info/connected")
+        connectedRef.observe(.value) { [weak self] snapshot in
+            DispatchQueue.main.async {
+                if let connected = snapshot.value as? Bool, connected {
+                    self?.connectionState = .connected
+                    self?.isOnline = true
+                    print("🌐 Connected to Firebase")
+                } else {
+                    self?.connectionState = .disconnected
+                    self?.isOnline = false
+                    print("📱 Using offline mode")
+                }
+            }
+        }
+        
+        print("🔥 Firebase listeners configured")
     }
+    */
     
     // MARK: - Authentication Stubs
     func signIn(email: String, password: String) async throws {
@@ -94,6 +145,155 @@ class FirebaseService: ObservableObject {
         }
         return urls
     }
+    
+    // MARK: - Real Firebase Implementation (Commented until SDK is added)
+    /*
+    // MARK: - Real Authentication
+    func signInReal(email: String, password: String) async throws {
+        do {
+            let result = try await auth.signIn(withEmail: email, password: password)
+            DispatchQueue.main.async {
+                self.isAuthenticated = true
+                self.currentUser = result.user.email
+            }
+            print("✅ Successfully signed in: \(result.user.email ?? "No email")")
+        } catch {
+            print("❌ Sign in failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func signUpReal(email: String, password: String) async throws {
+        do {
+            let result = try await auth.createUser(withEmail: email, password: password)
+            DispatchQueue.main.async {
+                self.isAuthenticated = true
+                self.currentUser = result.user.email
+            }
+            print("✅ Successfully created user: \(result.user.email ?? "No email")")
+        } catch {
+            print("❌ Sign up failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func signOutReal() throws {
+        do {
+            try auth.signOut()
+            DispatchQueue.main.async {
+                self.isAuthenticated = false
+                self.currentUser = nil
+            }
+            print("👤 Successfully signed out")
+        } catch {
+            print("❌ Sign out failed: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    // MARK: - Real Firestore Operations
+    func savePropertyReal(_ property: Property) async throws {
+        do {
+            let propertyData = try encodeProperty(property)
+            try await db.collection("properties").document(property.id.uuidString).setData(propertyData)
+            print("✅ Property saved to Firestore: \(property.name)")
+        } catch {
+            print("❌ Failed to save property: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func loadPropertiesReal() async throws -> [Property] {
+        do {
+            let snapshot = try await db.collection("properties").getDocuments()
+            var properties: [Property] = []
+            
+            for document in snapshot.documents {
+                if let property = try? decodeProperty(from: document.data()) {
+                    properties.append(property)
+                }
+            }
+            
+            print("✅ Loaded \(properties.count) properties from Firestore")
+            return properties
+        } catch {
+            print("❌ Failed to load properties: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func deletePropertyReal(_ propertyId: String) async throws {
+        do {
+            try await db.collection("properties").document(propertyId).delete()
+            print("✅ Property deleted from Firestore: \(propertyId)")
+        } catch {
+            print("❌ Failed to delete property: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    // MARK: - Real Storage Operations
+    func uploadImageReal(_ imageData: Data, path: String) async throws -> String {
+        do {
+            let storageRef = storage.reference().child(path)
+            let metadata = StorageMetadata()
+            metadata.contentType = "image/jpeg"
+            
+            let _ = try await storageRef.putData(imageData, metadata: metadata)
+            let downloadURL = try await storageRef.downloadURL()
+            
+            print("✅ Image uploaded to Firebase Storage: \(path)")
+            return downloadURL.absoluteString
+        } catch {
+            print("❌ Failed to upload image: \(error.localizedDescription)")
+            throw error
+        }
+    }
+    
+    func uploadImagesReal(_ imageDataArray: [Data], basePath: String) async throws -> [String] {
+        var urls: [String] = []
+        
+        for (index, imageData) in imageDataArray.enumerated() {
+            let imagePath = "\(basePath)/image_\(index)_\(UUID().uuidString).jpg"
+            let url = try await uploadImageReal(imageData, path: imagePath)
+            urls.append(url)
+        }
+        
+        print("✅ Uploaded \(urls.count) images to Firebase Storage")
+        return urls
+    }
+    
+    // MARK: - Offline Sync
+    func syncOfflineDataReal() async throws {
+        guard isOnline else {
+            print("📱 Device offline, data will sync when connection is restored")
+            return
+        }
+        
+        // Firebase Firestore automatically handles offline sync
+        // This method is for any additional sync logic we might need
+        try await db.enableNetwork()
+        print("🔄 Offline data synced with Firebase")
+    }
+    
+    // MARK: - Helper Methods
+    private func encodeProperty(_ property: Property) throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(property)
+        guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "EncodingError", code: 1, userInfo: nil)
+        }
+        return dict
+    }
+    
+    private func decodeProperty(from data: [String: Any]) throws -> Property {
+        let jsonData = try JSONSerialization.data(withJSONObject: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(Property.self, from: jsonData)
+    }
+    */
     
     // MARK: - Inspection Workflow Stubs
     func saveInspectionData(_ property: Property, isOffline: Bool = false) async throws {
