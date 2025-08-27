@@ -65,24 +65,47 @@ class FirebaseService: ObservableObject {
         print("🔥 Firebase listeners configured with offline persistence enabled")
     }
     
-    // MARK: - Authentication Stubs
+    // MARK: - Authentication (Real Firebase Implementation)
     func signIn(email: String, password: String) async throws {
-        // TODO: Replace with Firebase auth
-        print("Stub: Would sign in user with email: \(email)")
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        // Simulate success for now
+        do {
+            let result = try await auth.signIn(withEmail: email, password: password)
+            await MainActor.run {
+                self.isAuthenticated = true
+                self.currentUser = result.user.email
+            }
+            print("✅ Successfully signed in: \(result.user.email ?? "No email")")
+        } catch {
+            print("❌ Sign in failed: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     func signUp(email: String, password: String) async throws {
-        // TODO: Replace with Firebase auth
-        print("Stub: Would sign up user with email: \(email)")
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        // Simulate success for now
+        do {
+            let result = try await auth.createUser(withEmail: email, password: password)
+            await MainActor.run {
+                self.isAuthenticated = true
+                self.currentUser = result.user.email
+            }
+            print("✅ Successfully created user: \(result.user.email ?? "No email")")
+        } catch {
+            print("❌ Sign up failed: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     func signOut() throws {
-        // TODO: Replace with Firebase auth
-        print("Stub: Would sign out user")
+        do {
+            try auth.signOut()
+            DispatchQueue.main.async {
+                self.isAuthenticated = false
+                self.currentUser = nil
+            }
+            print("👤 Successfully signed out")
+        } catch {
+            print("❌ Sign out failed: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     // MARK: - Firestore Stubs

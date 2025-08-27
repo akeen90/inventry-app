@@ -6,14 +6,42 @@ class PropertyService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private let mockProperties: [Property] = {
+    private let firebaseService = FirebaseService.shared
+    
+    private func getMockProperties(for userId: String) -> [Property] {
         let landlord = Landlord(name: "Smith Property Ltd", email: "contact@smithproperties.co.uk")
-        return [
-            Property(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn),
-            Property(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut),
-            Property(name: "Countryside Cottage", address: "Oak Lane, Cotswolds, Gloucestershire GL54 1AA", type: .house, landlord: landlord, inventoryType: .midTerm)
-        ]
-    }()
+        
+        // Different properties for different demo users
+        switch userId {
+        case "john.smith@example.com":
+            return [
+                Property(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: userId),
+                Property(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: userId),
+                Property(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: userId)
+            ]
+        case "sarah.johnson@example.com":
+            return [
+                Property(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId),
+                Property(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: userId)
+            ]
+        case "admin@inventry.com":
+            // Admin sees all properties
+            let johnProperties = [
+                Property(name: "Victorian Terrace", address: "12 Baker Street, London SW1A 1AA", type: .house, landlord: landlord, inventoryType: .checkIn, userId: "john.smith@example.com"),
+                Property(name: "City Centre Flat", address: "45 Manchester Road, Birmingham B1 1AA", type: .flat, landlord: landlord, inventoryType: .checkOut, userId: "john.smith@example.com"),
+                Property(name: "Mountain Cabin", address: "789 Pine Road, Aspen CO", type: .house, landlord: landlord, inventoryType: .midTerm, userId: "john.smith@example.com")
+            ]
+            let sarahProperties = [
+                Property(name: "Downtown Office", address: "123 Business District, New York", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: "sarah.johnson@example.com"),
+                Property(name: "Beachfront Villa", address: "456 Ocean Drive, Miami FL", type: .house, landlord: landlord, inventoryType: .checkOut, userId: "sarah.johnson@example.com")
+            ]
+            return johnProperties + sarahProperties + [
+                Property(name: "Admin Test Property", address: "Admin Building, Corporate District", type: .commercial, landlord: landlord, inventoryType: .checkIn, userId: userId)
+            ]
+        default:
+            return []
+        }
+    }
     
     init() {
         loadMockData()
@@ -24,9 +52,20 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase fetch
+            // Get current user from Firebase
+            guard let currentUserEmail = firebaseService.currentUser else {
+                properties = []
+                isLoading = false
+                return
+            }
+            
+            // For now, use mock data filtered by user
+            // TODO: Replace with real Firebase fetch
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-            properties = mockProperties
+            properties = getMockProperties(for: currentUserEmail)
+            
+            print("🏠 Loaded \(properties.count) properties for user: \(currentUserEmail)")
+            
         } catch {
             errorMessage = "Failed to load properties: \(error.localizedDescription)"
         }
@@ -82,7 +121,8 @@ class PropertyService: ObservableObject {
     }
     
     private func loadMockData() {
-        properties = mockProperties
+        // Load empty initially - will be populated when user signs in
+        properties = []
     }
     
     // MARK: - Inspection Workflow

@@ -178,20 +178,21 @@ export default function Dashboard() {
               Manage all properties and clients across your organization
             </p>
           </div>
-          <button style={{
+          <a href="/add-client" style={{
+            display: 'inline-block',
             background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
             color: 'white',
             padding: '12px 24px',
             borderRadius: '12px',
             fontWeight: '600',
             fontSize: '16px',
-            border: 'none',
+            textDecoration: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
           }}>
-            + Add Property
-          </button>
+            + Add Client
+          </a>
         </div>
       </div>
 

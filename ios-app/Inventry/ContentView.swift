@@ -83,6 +83,13 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                    
+                    if firebaseService.isAuthenticated {
+                        Button(action: signOut) {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                                .foregroundColor(.red)
+                        }
+                    }
                 }
                 
                 Section("Connection") {
@@ -183,6 +190,15 @@ struct SettingsView: View {
             print("✅ Firebase test completed")
         } catch {
             print("❌ Firebase test failed: \(error)")
+        }
+    }
+    
+    private func signOut() {
+        do {
+            try firebaseService.signOut()
+            print("✅ User signed out successfully")
+        } catch {
+            print("❌ Failed to sign out: \(error)")
         }
     }
 }

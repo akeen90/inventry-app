@@ -2,6 +2,7 @@ import Foundation
 
 struct Property: Identifiable, Codable {
     let id: UUID
+    var userId: String // Firebase Auth User ID
     var name: String
     var address: String
     var type: PropertyType
@@ -12,8 +13,9 @@ struct Property: Identifiable, Codable {
     var createdAt: Date
     var updatedAt: Date
     
-    init(name: String, address: String, type: PropertyType, landlord: Landlord, inventoryType: InventoryType) {
+    init(name: String, address: String, type: PropertyType, landlord: Landlord, inventoryType: InventoryType, userId: String = "") {
         self.id = UUID()
+        self.userId = userId
         self.name = name
         self.address = address
         self.type = type

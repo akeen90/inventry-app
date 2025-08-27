@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB4188B32E5FB315008004E6 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B12E5FB315008004E6 /* LoginView.swift */; };
+		AB4188B42E5FB315008004E6 /* MainAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B22E5FB315008004E6 /* MainAppView.swift */; };
 		C8A1B2E92C9A1234 /* InventryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A1B2E82C9A1234 /* InventryApp.swift */; };
 		C8A1B2EB2C9A1234 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A1B2EA2C9A1234 /* ContentView.swift */; };
 		C8A1B2ED2C9A1234 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C8A1B2EC2C9A1234 /* Assets.xcassets */; };
@@ -27,6 +29,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AB4188B12E5FB315008004E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		AB4188B22E5FB315008004E6 /* MainAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAppView.swift; sourceTree = "<group>"; };
 		C8A1B2E52C9A1234 /* Inventry.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Inventry.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8A1B2E82C9A1234 /* InventryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventryApp.swift; sourceTree = "<group>"; };
 		C8A1B2EA2C9A1234 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -91,6 +95,8 @@
 		C8A1B3002C9A1234 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AB4188B12E5FB315008004E6 /* LoginView.swift */,
+				AB4188B22E5FB315008004E6 /* MainAppView.swift */,
 				C8A1B3052C9A1237 /* PropertyListView.swift */,
 				C8A1B3102C9A1242 /* PropertyDetailView.swift */,
 				C8A1B3122C9A1244 /* RoomDetailView.swift */,
@@ -200,6 +206,8 @@
 				C8A1B2EB2C9A1234 /* ContentView.swift in Sources */,
 				C8A1B3042C9A1235 /* Property.swift in Sources */,
 				C8A1B3052C9A1236 /* PropertyService.swift in Sources */,
+				AB4188B32E5FB315008004E6 /* LoginView.swift in Sources */,
+				AB4188B42E5FB315008004E6 /* MainAppView.swift in Sources */,
 				C8A1B3062C9A1237 /* PropertyListView.swift in Sources */,
 				C8A1B3082C9A1239 /* LettingsModels.swift in Sources */,
 				C8A1B3092C9A1240 /* FirebaseService.swift in Sources */,

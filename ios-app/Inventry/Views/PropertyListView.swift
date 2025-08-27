@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PropertyListView: View {
     @StateObject private var propertyService = PropertyService()
+    @StateObject private var firebaseService = FirebaseService.shared
     @State private var showingAddProperty = false
     @State private var searchText = ""
     
@@ -53,22 +54,20 @@ struct PropertyListView: View {
             }
             .navigationTitle("Portfolio")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingAddProperty = true
-                    } label: {
-                        Label("Add Property", systemImage: "plus")
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(
-                                LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                    }
+            .navigationBarItems(trailing:
+                Button {
+                    showingAddProperty = true
+                } label: {
+                    Label("Add Property", systemImage: "plus")
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
                 }
-            }
+            )
             .sheet(isPresented: $showingAddProperty) {
                 AddPropertyView(propertyService: propertyService)
             }
@@ -78,6 +77,17 @@ struct PropertyListView: View {
                 }
             } message: {
                 Text(propertyService.errorMessage ?? "")
+            }
+            .onAppear {
+                Task {
+                    await propertyService.loadProperties()
+                }
+            }
+            .onChange(of: firebaseService.currentUser) { newUser in
+                // Reload properties when user changes
+                Task {
+                    await propertyService.loadProperties()
+                }
             }
         }
     }
