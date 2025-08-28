@@ -38,6 +38,7 @@ class CameraViewController: UIViewController {
     private var doneButton: UIButton!
     private var photoCountLabel: UILabel!
     private var photoPreviewStack: UIStackView!
+    private var photoScrollView: UIScrollView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -130,10 +131,11 @@ class CameraViewController: UIViewController {
     private func setupUI() {
         // Cancel button
         cancelButton = UIButton(type: .system)
-        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.setTitle("✕", for: .normal)
         cancelButton.setTitleColor(.white, for: .normal)
-        cancelButton.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        cancelButton.layer.cornerRadius = 8
+        cancelButton.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        cancelButton.layer.cornerRadius = 20
+        cancelButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
         cancelButton.translatesAutoresizingMaskIntoConstraints = false
         cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
         view.addSubview(cancelButton)
@@ -142,10 +144,11 @@ class CameraViewController: UIViewController {
         photoCountLabel = UILabel()
         photoCountLabel.text = ""
         photoCountLabel.textColor = .white
-        photoCountLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        photoCountLabel.layer.cornerRadius = 8
+        photoCountLabel.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        photoCountLabel.layer.cornerRadius = 12
         photoCountLabel.layer.masksToBounds = true
         photoCountLabel.textAlignment = .center
+        photoCountLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         photoCountLabel.translatesAutoresizingMaskIntoConstraints = false
         photoCountLabel.isHidden = true
         view.addSubview(photoCountLabel)
@@ -154,36 +157,50 @@ class CameraViewController: UIViewController {
         shutterButton = UIButton(type: .custom)
         shutterButton.backgroundColor = .white
         shutterButton.layer.cornerRadius = 35
-        shutterButton.layer.borderWidth = 5
-        shutterButton.layer.borderColor = UIColor.white.cgColor
+        shutterButton.layer.borderWidth = 4
+        shutterButton.layer.borderColor = UIColor.white.withAlphaComponent(0.5).cgColor
+        shutterButton.layer.shadowColor = UIColor.black.cgColor
+        shutterButton.layer.shadowOffset = CGSize(width: 0, height: 2)
+        shutterButton.layer.shadowOpacity = 0.4
+        shutterButton.layer.shadowRadius = 8
         shutterButton.translatesAutoresizingMaskIntoConstraints = false
         shutterButton.addTarget(self, action: #selector(shutterTapped), for: .touchUpInside)
         view.addSubview(shutterButton)
         
         // Done button
         doneButton = UIButton(type: .system)
-        doneButton.setTitle("Done", for: .normal)
-        doneButton.setTitleColor(.white, for: .normal)
-        doneButton.backgroundColor = UIColor.systemGreen
-        doneButton.layer.cornerRadius = 25
+        doneButton.setTitle("✓", for: .normal)
+        doneButton.setTitleColor(.black, for: .normal)
+        doneButton.backgroundColor = UIColor.white
+        doneButton.layer.cornerRadius = 30
+        doneButton.layer.shadowColor = UIColor.black.cgColor
+        doneButton.layer.shadowOffset = CGSize(width: 0, height: 2)
+        doneButton.layer.shadowOpacity = 0.4
+        doneButton.layer.shadowRadius = 6
+        doneButton.titleLabel?.font = UIFont.systemFont(ofSize: 24, weight: .bold)
         doneButton.translatesAutoresizingMaskIntoConstraints = false
         doneButton.isHidden = true
         doneButton.addTarget(self, action: #selector(doneTapped), for: .touchUpInside)
         view.addSubview(doneButton)
         
-        // Photo preview stack
+        // Photo preview scroll view and stack
+        photoScrollView = UIScrollView()
+        photoScrollView.showsHorizontalScrollIndicator = false
+        photoScrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(photoScrollView)
+        
         photoPreviewStack = UIStackView()
         photoPreviewStack.axis = .horizontal
         photoPreviewStack.spacing = 10
         photoPreviewStack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(photoPreviewStack)
+        photoScrollView.addSubview(photoPreviewStack)
         
         // Setup constraints
         NSLayoutConstraint.activate([
             // Cancel button
             cancelButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            cancelButton.widthAnchor.constraint(equalToConstant: 80),
+            cancelButton.widthAnchor.constraint(equalToConstant: 40),
             cancelButton.heightAnchor.constraint(equalToConstant: 40),
             
             // Photo count
@@ -201,14 +218,21 @@ class CameraViewController: UIViewController {
             // Done button
             doneButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
             doneButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
-            doneButton.widthAnchor.constraint(equalToConstant: 50),
-            doneButton.heightAnchor.constraint(equalToConstant: 50),
+            doneButton.widthAnchor.constraint(equalToConstant: 60),
+            doneButton.heightAnchor.constraint(equalToConstant: 60),
             
-            // Photo preview
-            photoPreviewStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            photoPreviewStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            photoPreviewStack.bottomAnchor.constraint(equalTo: shutterButton.topAnchor, constant: -20),
-            photoPreviewStack.heightAnchor.constraint(equalToConstant: 60)
+            // Photo preview scroll view
+            photoScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            photoScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            photoScrollView.bottomAnchor.constraint(equalTo: shutterButton.topAnchor, constant: -30),
+            photoScrollView.heightAnchor.constraint(equalToConstant: 50),
+            
+            // Photo preview stack within scroll view
+            photoPreviewStack.leadingAnchor.constraint(equalTo: photoScrollView.leadingAnchor),
+            photoPreviewStack.trailingAnchor.constraint(equalTo: photoScrollView.trailingAnchor),
+            photoPreviewStack.topAnchor.constraint(equalTo: photoScrollView.topAnchor),
+            photoPreviewStack.bottomAnchor.constraint(equalTo: photoScrollView.bottomAnchor),
+            photoPreviewStack.heightAnchor.constraint(equalTo: photoScrollView.heightAnchor)
         ])
     }
     
@@ -258,22 +282,81 @@ class CameraViewController: UIViewController {
             
             if allowMultiple {
                 doneButton.isHidden = false
+                // Update Done button with count indicator
+                doneButton.setTitle("✓", for: .normal)
+                // Keep shutter button consistent
+                shutterButton.backgroundColor = .white
             }
         } else {
             photoCountLabel.isHidden = true
             doneButton.isHidden = true
+            doneButton.setTitle("✓", for: .normal)
+            shutterButton.backgroundColor = .white
         }
         
-        // Update preview stack
+        // Update preview stack - show more photos for better feedback
         photoPreviewStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
-        for image in capturedImages.suffix(5) {
+        let maxPreviewPhotos = allowMultiple ? 8 : 5
+        for image in capturedImages.suffix(maxPreviewPhotos) {
+            let containerView = UIView()
+            containerView.layer.cornerRadius = 8
+            containerView.layer.shadowColor = UIColor.black.cgColor
+            containerView.layer.shadowOffset = CGSize(width: 0, height: 1)
+            containerView.layer.shadowOpacity = 0.4
+            containerView.layer.shadowRadius = 3
+            containerView.backgroundColor = UIColor.white
+            
             let imageView = UIImageView(image: image)
             imageView.contentMode = .scaleAspectFill
-            imageView.layer.cornerRadius = 8
+            imageView.layer.cornerRadius = 6
             imageView.layer.masksToBounds = true
-            imageView.widthAnchor.constraint(equalToConstant: 60).isActive = true
-            photoPreviewStack.addArrangedSubview(imageView)
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            
+            containerView.addSubview(imageView)
+            containerView.translatesAutoresizingMaskIntoConstraints = false
+            
+            NSLayoutConstraint.activate([
+                containerView.widthAnchor.constraint(equalToConstant: 48),
+                containerView.heightAnchor.constraint(equalToConstant: 48),
+                imageView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 2),
+                imageView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -2),
+                imageView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 2),
+                imageView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -2)
+            ])
+            
+            photoPreviewStack.addArrangedSubview(containerView)
+        }
+        
+        // Update scroll view content size and scroll to end to show latest photo
+        DispatchQueue.main.async {
+            self.photoScrollView.layoutIfNeeded()
+            let contentWidth = self.photoPreviewStack.frame.width
+            self.photoScrollView.contentSize = CGSize(width: contentWidth, height: 50)
+            
+            // Auto-scroll to show the latest photo
+            if contentWidth > self.photoScrollView.frame.width {
+                let scrollPoint = CGPoint(x: contentWidth - self.photoScrollView.frame.width, y: 0)
+                self.photoScrollView.setContentOffset(scrollPoint, animated: true)
+            }
+        }
+        
+        // Add visual feedback for successful photo capture
+        if count > 0 {
+            animateSuccessfulCapture()
+        }
+    }
+    
+    private func animateSuccessfulCapture() {
+        // Brief flash effect to indicate photo was captured
+        let flashView = UIView(frame: view.bounds)
+        flashView.backgroundColor = UIColor.white.withAlphaComponent(0.8)
+        view.addSubview(flashView)
+        
+        UIView.animate(withDuration: 0.15, animations: {
+            flashView.alpha = 0
+        }) { _ in
+            flashView.removeFromSuperview()
         }
     }
     
@@ -336,10 +419,18 @@ struct WorkingCameraButton: View {
             .cornerRadius(12)
         }
         .sheet(isPresented: $showingCamera) {
-            NativeCameraPickerView(
-                allowsMultiple: allowMultiple,
-                onPhotosCaptured: onPhotosCaptured
-            )
+            // Use advanced multi-photo camera for multiple photos, simple picker for single
+            if allowMultiple {
+                ActualCameraView(
+                    onPhotosCaptured: onPhotosCaptured,
+                    allowMultiple: allowMultiple
+                )
+            } else {
+                NativeCameraPickerView(
+                    allowsMultiple: allowMultiple,
+                    onPhotosCaptured: onPhotosCaptured
+                )
+            }
         }
     }
 }

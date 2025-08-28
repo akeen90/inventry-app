@@ -189,7 +189,10 @@ struct RoomDetailView: View {
                 EditInventoryItemView(
                     item: item,
                     roomId: room.id,
-                    inventoryService: inventoryService
+                    inventoryService: inventoryService,
+                    onComplete: {
+                        selectedItem = nil
+                    }
                 )
             }
         }
@@ -506,6 +509,7 @@ struct AddInventoryItemView: View {
     
     private func addItem() async {
         isSubmitting = true
+        defer { isSubmitting = false }
         
         var newItem = InventoryItem(
             name: itemName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -533,8 +537,6 @@ struct AddInventoryItemView: View {
         if inventoryService.errorMessage == nil {
             dismiss()
         }
-        
-        isSubmitting = false
     }
 }
 
@@ -542,6 +544,7 @@ struct EditInventoryItemView: View {
     let item: InventoryItem
     let roomId: UUID
     @ObservedObject var inventoryService: InventoryService
+    let onComplete: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     
     @State private var itemName: String
@@ -553,10 +556,11 @@ struct EditInventoryItemView: View {
     @State private var capturedImages: [UIImage] = []
     @State private var isSubmitting = false
     
-    init(item: InventoryItem, roomId: UUID, inventoryService: InventoryService) {
+    init(item: InventoryItem, roomId: UUID, inventoryService: InventoryService, onComplete: (() -> Void)? = nil) {
         self.item = item
         self.roomId = roomId
         self.inventoryService = inventoryService
+        self.onComplete = onComplete
         
         _itemName = State(initialValue: item.name)
         _selectedCategory = State(initialValue: item.category)
@@ -652,6 +656,7 @@ struct EditInventoryItemView: View {
     
     private func updateItem() async {
         isSubmitting = true
+        defer { isSubmitting = false }
         
         var updatedItem = item
         updatedItem.name = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -675,10 +680,10 @@ struct EditInventoryItemView: View {
         await inventoryService.updateItemInRoom(updatedItem, roomId: roomId)
         
         if inventoryService.errorMessage == nil {
-            dismiss()
+            DispatchQueue.main.async {
+                onComplete?()
+            }
         }
-        
-        isSubmitting = false
     }
 }
 
