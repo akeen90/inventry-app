@@ -509,10 +509,20 @@ struct AddInventoryItemView: View {
     
     private func addItem() async {
         isSubmitting = true
-        defer { isSubmitting = false }
+        
+        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("📝 Starting add item")
+        print("📝 Item name: '\(trimmedName)'")
+        
+        guard !trimmedName.isEmpty else {
+            print("❌ Item name is empty, aborting add")
+            isSubmitting = false
+            return
+        }
         
         var newItem = InventoryItem(
-            name: itemName.trimmingCharacters(in: .whitespacesAndNewlines),
+            name: trimmedName,
             category: selectedCategory,
             condition: selectedCondition
         )
@@ -534,8 +544,15 @@ struct AddInventoryItemView: View {
         
         await inventoryService.addItemToRoom(newItem, roomId: roomId)
         
+        isSubmitting = false
+        
+        print("📝 Add result - Error: \(inventoryService.errorMessage ?? "none")")
+        
         if inventoryService.errorMessage == nil {
+            print("✅ Add successful, calling dismiss")
             dismiss()
+        } else {
+            print("❌ Add failed: \(inventoryService.errorMessage!)")
         }
     }
 }
@@ -656,10 +673,20 @@ struct EditInventoryItemView: View {
     
     private func updateItem() async {
         isSubmitting = true
-        defer { isSubmitting = false }
+        
+        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("📝 Starting update for item: \(item.id)")
+        print("📝 Item name: '\(trimmedName)'")
+        
+        guard !trimmedName.isEmpty else {
+            print("❌ Item name is empty, aborting update")
+            isSubmitting = false
+            return
+        }
         
         var updatedItem = item
-        updatedItem.name = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        updatedItem.name = trimmedName
         updatedItem.category = selectedCategory
         updatedItem.condition = selectedCondition
         updatedItem.description = description.isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -679,10 +706,15 @@ struct EditInventoryItemView: View {
         
         await inventoryService.updateItemInRoom(updatedItem, roomId: roomId)
         
+        isSubmitting = false
+        
+        print("📝 Update result - Error: \(inventoryService.errorMessage ?? "none")")
+        
         if inventoryService.errorMessage == nil {
-            DispatchQueue.main.async {
-                onComplete?()
-            }
+            print("✅ Update successful, calling onComplete")
+            onComplete?()
+        } else {
+            print("❌ Update failed: \(inventoryService.errorMessage!)")
         }
     }
 }

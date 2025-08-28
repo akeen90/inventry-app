@@ -34,6 +34,7 @@ class CameraViewController: UIViewController {
     
     // UI Elements
     private var shutterButton: UIButton!
+    private var shutterRing: UIView!
     private var cancelButton: UIButton!
     private var doneButton: UIButton!
     private var photoCountLabel: UILabel!
@@ -153,19 +154,25 @@ class CameraViewController: UIViewController {
         photoCountLabel.isHidden = true
         view.addSubview(photoCountLabel)
         
-        // Shutter button
+        // Shutter button with ring design
+        shutterRing = UIView()
+        shutterRing.backgroundColor = .clear
+        shutterRing.layer.cornerRadius = 40
+        shutterRing.layer.borderWidth = 3
+        shutterRing.layer.borderColor = UIColor.white.cgColor
+        shutterRing.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(shutterRing)
+        
         shutterButton = UIButton(type: .custom)
         shutterButton.backgroundColor = .white
-        shutterButton.layer.cornerRadius = 35
-        shutterButton.layer.borderWidth = 4
-        shutterButton.layer.borderColor = UIColor.white.withAlphaComponent(0.5).cgColor
+        shutterButton.layer.cornerRadius = 30
         shutterButton.layer.shadowColor = UIColor.black.cgColor
         shutterButton.layer.shadowOffset = CGSize(width: 0, height: 2)
-        shutterButton.layer.shadowOpacity = 0.4
-        shutterButton.layer.shadowRadius = 8
+        shutterButton.layer.shadowOpacity = 0.3
+        shutterButton.layer.shadowRadius = 4
         shutterButton.translatesAutoresizingMaskIntoConstraints = false
         shutterButton.addTarget(self, action: #selector(shutterTapped), for: .touchUpInside)
-        view.addSubview(shutterButton)
+        shutterRing.addSubview(shutterButton)
         
         // Done button
         doneButton = UIButton(type: .system)
@@ -209,11 +216,17 @@ class CameraViewController: UIViewController {
             photoCountLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 80),
             photoCountLabel.heightAnchor.constraint(equalToConstant: 40),
             
-            // Shutter button
-            shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
-            shutterButton.widthAnchor.constraint(equalToConstant: 70),
-            shutterButton.heightAnchor.constraint(equalToConstant: 70),
+            // Shutter ring
+            shutterRing.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            shutterRing.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
+            shutterRing.widthAnchor.constraint(equalToConstant: 80),
+            shutterRing.heightAnchor.constraint(equalToConstant: 80),
+            
+            // Shutter button (centered in ring)
+            shutterButton.centerXAnchor.constraint(equalTo: shutterRing.centerXAnchor),
+            shutterButton.centerYAnchor.constraint(equalTo: shutterRing.centerYAnchor),
+            shutterButton.widthAnchor.constraint(equalToConstant: 60),
+            shutterButton.heightAnchor.constraint(equalToConstant: 60),
             
             // Done button
             doneButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
@@ -224,7 +237,7 @@ class CameraViewController: UIViewController {
             // Photo preview scroll view
             photoScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             photoScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            photoScrollView.bottomAnchor.constraint(equalTo: shutterButton.topAnchor, constant: -30),
+            photoScrollView.bottomAnchor.constraint(equalTo: shutterRing.topAnchor, constant: -30),
             photoScrollView.heightAnchor.constraint(equalToConstant: 50),
             
             // Photo preview stack within scroll view
