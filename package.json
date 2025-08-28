@@ -1,0 +1,31 @@
+{
+  "name": "inventry2-monorepo",
+  "version": "1.0.0",
+  "description": "Inventry2 - Inventory Management System",
+  "private": true,
+  "scripts": {
+    "dev:client": "cd client-dashboard && npm run dev",
+    "dev:company": "cd company-dashboard && npm run dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:company\"",
+    "build:client": "cd client-dashboard && npm run build",
+    "build:company": "cd company-dashboard && npm run build",
+    "build": "./build-all.sh",
+    "install:all": "npm run install:client && npm run install:company",
+    "install:client": "cd client-dashboard && npm install",
+    "install:company": "cd company-dashboard && npm install",
+    "lint": "npm run lint:client && npm run lint:company",
+    "lint:client": "cd client-dashboard && npm run lint",
+    "lint:company": "cd company-dashboard && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "client-dashboard",
+    "company-dashboard"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

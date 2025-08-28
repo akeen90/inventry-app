@@ -1,12 +1,18 @@
 import SwiftUI
 import AVFoundation
 import UIKit
+import UniformTypeIdentifiers
 
 
 struct PropertyDetailView: View {
     let property: Property
     @StateObject private var inventoryService = InventoryService()
     @State private var showingAddRoom = false
+    @State private var showingShareSheet = false
+    @State private var showingAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var pdfURL: URL?
     
     var body: some View {
         NavigationView {
@@ -35,7 +41,7 @@ struct PropertyDetailView: View {
                         // Quick Action Buttons
                         QuickActionsView(
                             onAddRoom: { showingAddRoom = true },
-                            onGenerateReport: { /* Generate PDF report */ },
+                            onGenerateReport: { generatePDFReport() },
                             canComplete: inventoryService.currentReport?.isComplete == true
                         )
                         
@@ -59,10 +65,46 @@ struct PropertyDetailView: View {
             .sheet(isPresented: $showingAddRoom) {
                 ModernAddRoomView(inventoryService: inventoryService)
             }
+            .sheet(isPresented: $showingShareSheet) {
+                if let pdfURL = pdfURL {
+                    ShareSheet(items: [pdfURL])
+                }
+            }
+            .alert(alertTitle, isPresented: $showingAlert) {
+                Button("OK") { }
+            } message: {
+                Text(alertMessage)
+            }
         }
         .onAppear {
             inventoryService.loadInventoryReport(for: property.id, type: property.inventoryType)
         }
+    }
+    
+    // MARK: - PDF Generation
+    private func generatePDFReport() {
+        let pdfService = PDFGenerationService.shared
+        
+        guard let pdfData = pdfService.generatePropertyReport(for: property) else {
+            showAlert(title: "Error", message: "Failed to generate PDF report")
+            return
+        }
+        
+        let fileName = "PropertyReport_\(property.name.replacingOccurrences(of: " ", with: "_"))_\(Date().timeIntervalSince1970).pdf"
+        
+        guard let url = pdfService.sharePDF(pdfData: pdfData, fileName: fileName) else {
+            showAlert(title: "Error", message: "Failed to create PDF file")
+            return
+        }
+        
+        pdfURL = url
+        showingShareSheet = true
+    }
+    
+    private func showAlert(title: String, message: String) {
+        alertTitle = title
+        alertMessage = message
+        showingAlert = true
     }
 }
 
@@ -1011,4 +1053,16 @@ struct PropertyPhotoSection: View {
     )
     
     return PropertyDetailView(property: property)
+}
+
+// MARK: - ShareSheet
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

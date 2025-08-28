@@ -4,18 +4,44 @@ import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
 
+enum FirebaseError: Error {
+    case userNotAuthenticated
+    case dataEncodingFailed
+    case dataDecodingFailed
+    
+    var localizedDescription: String {
+        switch self {
+        case .userNotAuthenticated:
+            return "User is not authenticated"
+        case .dataEncodingFailed:
+            return "Failed to encode data"
+        case .dataDecodingFailed:
+            return "Failed to decode data"
+        }
+    }
+}
+
 class FirebaseService: ObservableObject {
     static let shared = FirebaseService()
     
     // Firebase instances
     private let db = Firestore.firestore()
-    private let auth = Auth.auth()
     private let storage = Storage.storage()
     
-    @Published var isAuthenticated = false
-    @Published var currentUser: String?
+    // Use AuthenticationService as single source of truth
+    private let authService = AuthenticationService.shared
+    
     @Published var isOnline = false
     @Published var connectionState: ConnectionState = .unknown
+    
+    // Computed properties that delegate to AuthenticationService
+    var isAuthenticated: Bool {
+        return authService.isAuthenticated
+    }
+    
+    var currentUser: User? {
+        return authService.currentUser
+    }
     
     enum ConnectionState {
         case connected
@@ -33,29 +59,13 @@ class FirebaseService: ObservableObject {
         print("📱 Using Firebase mock mode for development")
         connectionState = .connected
         isOnline = true
-        // Start with unauthenticated state
-        isAuthenticated = false
-        currentUser = nil
+        // Authentication state is now handled by AuthenticationService
     }
     
     private func setupFirebaseListeners() {
-        // Authentication state listener
-        auth.addStateDidChangeListener { [weak self] _, user in
-            DispatchQueue.main.async {
-                self?.isAuthenticated = user != nil
-                self?.currentUser = user?.email
-                if let user = user {
-                    print("✅ User signed in: \(user.email ?? "No email")")
-                } else {
-                    print("👤 User signed out")
-                }
-            }
-        }
-        
-        // Enable offline persistence
+        // Enable offline persistence with modern API
         let settings = FirestoreSettings()
-        settings.isPersistenceEnabled = true
-        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        settings.cacheSettings = PersistentCacheSettings(sizeBytes: NSNumber(value: FirestoreCacheSizeUnlimited))
         db.settings = settings
         
         // Set initial connection state
@@ -63,69 +73,84 @@ class FirebaseService: ObservableObject {
         isOnline = true
         
         print("🔥 Firebase listeners configured with offline persistence enabled")
+        print("🔗 Using AuthenticationService for auth state management")
     }
     
-    // MARK: - Authentication (Real Firebase Implementation)
-    func signIn(email: String, password: String) async throws {
-        do {
-            let result = try await auth.signIn(withEmail: email, password: password)
-            await MainActor.run {
-                self.isAuthenticated = true
-                self.currentUser = result.user.email
-            }
-            print("✅ Successfully signed in: \(result.user.email ?? "No email")")
-        } catch {
-            print("❌ Sign in failed: \(error.localizedDescription)")
-            throw error
+    // MARK: - Authentication is handled by AuthenticationService
+    
+    // MARK: - User-specific Data Operations
+    private func getUserPath() throws -> String {
+        guard let userID = authService.userID else {
+            print("❌ No authenticated user found")
+            throw FirebaseError.userNotAuthenticated
         }
+        return "users/\(userID)"
     }
     
-    func signUp(email: String, password: String) async throws {
-        do {
-            let result = try await auth.createUser(withEmail: email, password: password)
-            await MainActor.run {
-                self.isAuthenticated = true
-                self.currentUser = result.user.email
-            }
-            print("✅ Successfully created user: \(result.user.email ?? "No email")")
-        } catch {
-            print("❌ Sign up failed: \(error.localizedDescription)")
-            throw error
-        }
-    }
-    
-    func signOut() throws {
-        do {
-            try auth.signOut()
-            DispatchQueue.main.async {
-                self.isAuthenticated = false
-                self.currentUser = nil
-            }
-            print("👤 Successfully signed out")
-        } catch {
-            print("❌ Sign out failed: \(error.localizedDescription)")
-            throw error
-        }
-    }
-    
-    // MARK: - Firestore Stubs
+    // MARK: - Firestore Operations
     func saveProperty(_ property: Property) async throws {
-        // TODO: Replace with Firestore save
-        print("Stub: Would save property: \(property.name)")
-        try await Task.sleep(nanoseconds: 500_000_000)
+        guard let userID = authService.userID else {
+            print("❌ Cannot save property: No authenticated user")
+            throw FirebaseError.userNotAuthenticated
+        }
+        
+        print("🔄 Saving property '\(property.name)' for user \(userID)")
+        
+        do {
+            let propertyData = try encodeProperty(property)
+            try await db.collection("users").document(userID)
+                .collection("properties").document(property.id.uuidString)
+                .setData(propertyData)
+            print("✅ Property saved to Firestore for user \(userID): \(property.name)")
+        } catch {
+            print("❌ Failed to save property: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     func loadProperties() async throws -> [Property] {
-        // TODO: Replace with Firestore fetch
-        print("Stub: Would load properties from Firestore")
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        return []
+        guard let userID = authService.userID else {
+            print("❌ Cannot load properties: No authenticated user")
+            throw FirebaseError.userNotAuthenticated
+        }
+        
+        print("🔄 Loading properties for user \(userID)")
+        
+        do {
+            let snapshot = try await db.collection("users").document(userID)
+                .collection("properties").getDocuments()
+            var properties: [Property] = []
+            
+            for document in snapshot.documents {
+                if let property = try? decodeProperty(from: document.data()) {
+                    properties.append(property)
+                }
+            }
+            
+            print("✅ Loaded \(properties.count) properties from Firestore for user \(userID)")
+            return properties
+        } catch {
+            print("❌ Failed to load properties: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     func deleteProperty(_ propertyId: String) async throws {
-        // TODO: Replace with Firestore delete
-        print("Stub: Would delete property: \(propertyId)")
-        try await Task.sleep(nanoseconds: 500_000_000)
+        guard let userID = authService.userID else {
+            print("❌ Cannot delete property: No authenticated user")
+            throw FirebaseError.userNotAuthenticated
+        }
+        
+        print("🔄 Deleting property \(propertyId) for user \(userID)")
+        
+        do {
+            try await db.collection("users").document(userID)
+                .collection("properties").document(propertyId).delete()
+            print("✅ Property deleted from Firestore for user \(userID): \(propertyId)")
+        } catch {
+            print("❌ Failed to delete property: \(error.localizedDescription)")
+            throw error
+        }
     }
     
     // MARK: - Storage Stubs
@@ -344,5 +369,23 @@ class FirebaseService: ObservableObject {
                 "Cleanliness"
             ]
         }
+    }
+    
+    // MARK: - Helper Methods
+    private func encodeProperty(_ property: Property) throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(property)
+        guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw FirebaseError.dataEncodingFailed
+        }
+        return dict
+    }
+    
+    private func decodeProperty(from data: [String: Any]) throws -> Property {
+        let jsonData = try JSONSerialization.data(withJSONObject: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(Property.self, from: jsonData)
     }
 }

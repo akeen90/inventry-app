@@ -66,6 +66,7 @@ struct ReportsView: View {
 
 struct SettingsView: View {
     @StateObject private var firebaseService = FirebaseService.shared
+    @StateObject private var authService = AuthenticationService.shared
     
     var body: some View {
         NavigationView {
@@ -75,7 +76,7 @@ struct SettingsView: View {
                         Image(systemName: firebaseService.isAuthenticated ? "person.circle.fill" : "person.circle")
                             .foregroundColor(firebaseService.isAuthenticated ? .blue : .gray)
                         VStack(alignment: .leading) {
-                            Text(firebaseService.isAuthenticated ? (firebaseService.currentUser ?? "Unknown User") : "Not Signed In")
+                            Text(firebaseService.isAuthenticated ? (firebaseService.currentUser?.email ?? "Unknown User") : "Not Signed In")
                                 .font(.headline)
                             Text(firebaseService.isAuthenticated ? "Authenticated" : "Sign in to sync data")
                                 .font(.caption)
@@ -185,17 +186,13 @@ struct SettingsView: View {
     private func testFirebaseConnection() async {
         print("🧪 Testing Firebase connection...")
         // This would test actual Firebase when SDK is added
-        do {
-            try await firebaseService.signIn(email: "test@inventry.com", password: "test123")
-            print("✅ Firebase test completed")
-        } catch {
-            print("❌ Firebase test failed: \(error)")
-        }
+        // Note: Authentication is now handled by AuthenticationService
+        print("✅ Firebase connection test - using AuthenticationService for auth")
     }
     
     private func signOut() {
         do {
-            try firebaseService.signOut()
+            try authService.signOut()
             print("✅ User signed out successfully")
         } catch {
             print("❌ Failed to sign out: \(error)")

@@ -273,11 +273,13 @@ class PropertyService: ObservableObject {
         
         do {
             // Get current user from Firebase
-            guard let currentUserEmail = firebaseService.currentUser else {
+            guard let currentUser = firebaseService.currentUser else {
                 properties = []
                 isLoading = false
                 return
             }
+            
+            let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
             // For now, use mock data filtered by user
             // TODO: Replace with real Firebase fetch
