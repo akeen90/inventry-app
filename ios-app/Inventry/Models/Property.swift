@@ -11,6 +11,7 @@ struct Property: Identifiable, Codable {
     var inventoryType: InventoryType
     var status: PropertyStatus
     var inventoryReport: InventoryReport?
+    var propertyPhoto: PhotoReference? // Property exterior photo
     var createdAt: Date
     var updatedAt: Date
     
@@ -25,6 +26,7 @@ struct Property: Identifiable, Codable {
         self.inventoryType = inventoryType
         self.status = .draft
         self.inventoryReport = nil
+        self.propertyPhoto = nil
         self.createdAt = Date()
         self.updatedAt = Date()
     }

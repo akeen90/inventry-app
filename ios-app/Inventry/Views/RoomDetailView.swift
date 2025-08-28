@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import AVFoundation
+import CoreMedia
 
 struct RoomDetailView: View {
     let room: Room
@@ -61,6 +63,8 @@ struct RoomDetailView: View {
 
 struct RoomHeaderView: View {
     let room: Room
+    @State private var showingRoomCamera = false
+    @State private var roomImages: [UIImage] = []
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -107,6 +111,58 @@ struct RoomHeaderView: View {
                 }
             }
             
+            // Room Photos Section
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Room Photos")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button("Take Photo", systemImage: "camera") {
+                        showingRoomCamera = true
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+                }
+                
+                if roomImages.isEmpty && room.photos.isEmpty {
+                    HStack {
+                        Image(systemName: "photo")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                        
+                        Text("No room photos added yet")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            // Show existing photos from room model
+                            ForEach(0..<room.photos.count, id: \.self) { index in
+                                RoomPhotoThumbnail(photo: room.photos[index])
+                            }
+                            
+                            // Show newly captured photos
+                            ForEach(0..<roomImages.count, id: \.self) { index in
+                                Image(uiImage: roomImages[index])
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color.blue, lineWidth: 2)
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+            }
+            
             if let notes = room.notes, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Notes")
@@ -124,6 +180,11 @@ struct RoomHeaderView: View {
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(12)
+        .sheet(isPresented: $showingRoomCamera) {
+            RoomCameraView { image in
+                roomImages.append(image)
+            }
+        }
     }
 }
 
@@ -365,10 +426,8 @@ struct AddInventoryItemView: View {
             .disabled(isSubmitting)
         }
         .sheet(isPresented: $showingCamera) {
-            SafeImagePickerView(sourceType: .camera) { image in
-                if let image = image {
-                    capturedImages.append(image)
-                }
+            InventoryItemCameraView { image in
+                capturedImages.append(image)
             }
         }
         .sheet(isPresented: $showingImagePicker) {
@@ -549,10 +608,8 @@ struct EditInventoryItemView: View {
             .disabled(isSubmitting)
         }
         .sheet(isPresented: $showingCamera) {
-            SafeImagePickerView(sourceType: .camera) { image in
-                if let image = image {
-                    capturedImages.append(image)
-                }
+            InventoryItemCameraView { image in
+                capturedImages.append(image)
             }
         }
         .sheet(isPresented: $showingImagePicker) {
@@ -596,7 +653,603 @@ struct EditInventoryItemView: View {
     }
 }
 
-// MARK: - Safe Image Picker
+// MARK: - Room Photo Components
+struct RoomPhotoThumbnail: View {
+    let photo: PhotoReference
+    
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            
+            if let image = photo.originalImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 80, height: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: "photo")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                    Text("Loading...")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+        )
+    }
+}
+
+struct RoomCameraView: UIViewControllerRepresentable {
+    let onPhotoTaken: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    func makeUIViewController(context: Context) -> RoomCameraController {
+        let controller = RoomCameraController()
+        controller.onPhotoTaken = onPhotoTaken
+        controller.onDismiss = { dismiss() }
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: RoomCameraController, context: Context) {}
+}
+
+class RoomCameraController: UIViewController {
+    var onPhotoTaken: ((UIImage) -> Void)?
+    var onDismiss: (() -> Void)?
+    
+    private var captureSession: AVCaptureSession!
+    private var videoPreviewLayer: AVCaptureVideoPreviewLayer!
+    private var photoOutput: AVCapturePhotoOutput!
+    private var currentCamera: AVCaptureDevice!
+    private var currentCameraInput: AVCaptureDeviceInput!
+    
+    private var shutterButton: UIButton!
+    private var cancelButton: UIButton!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        print("🏠📷 Room Camera loading...")
+        checkCameraPermission()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        videoPreviewLayer?.frame = view.bounds
+    }
+    
+    private func checkCameraPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            print("📷✅ Room camera authorized, setting up")
+            setupCameraAndUI()
+        case .denied:
+            print("📷❌ Room camera denied")
+            showAlert(title: "Camera Access Required", message: "Please enable camera access in Settings to take room photos.")
+        case .restricted:
+            print("📷⛔ Room camera restricted")
+            showAlert(title: "Camera Restricted", message: "Camera access is restricted on this device.")
+        case .notDetermined:
+            print("📷❓ Room camera permission not determined, requesting...")
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        print("📷✅ Room camera permission granted")
+                        self.setupCameraAndUI()
+                    } else {
+                        print("📷❌ Room camera permission denied by user")
+                        self.showAlert(title: "Camera Access Required", message: "Please enable camera access to take room photos.")
+                    }
+                }
+            }
+        @unknown default:
+            print("📷❓ Unknown room camera permission status")
+            showAlert(title: "Camera Error", message: "Unable to determine camera permissions.")
+        }
+    }
+    
+    private func setupCameraAndUI() {
+        print("🔧 Setting up room camera session...")
+        
+        captureSession = AVCaptureSession()
+        
+        // Use high quality photo preset for room photos
+        captureSession.sessionPreset = .photo
+        print("📷 Using photo preset for high-quality room photos")
+        
+        // Try to get the best available camera (including ultra-wide for room photos)
+        var camera: AVCaptureDevice?
+        
+        // First try ultra-wide camera for better room coverage
+        if let ultraWideCamera = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) {
+            camera = ultraWideCamera
+            print("📷 Using ultra-wide camera for room photos")
+        } else if let wideCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+            camera = wideCamera
+            print("📷 Using wide camera for room photos")
+        }
+        
+        guard let selectedCamera = camera else {
+            print("❌ No suitable camera found for room photos")
+            showAlert(title: "Camera Error", message: "Unable to access camera for room photos.")
+            return
+        }
+        
+        currentCamera = selectedCamera
+        
+        do {
+            currentCameraInput = try AVCaptureDeviceInput(device: selectedCamera)
+            
+            if captureSession.canAddInput(currentCameraInput) {
+                captureSession.addInput(currentCameraInput)
+                print("✅ Added room camera input")
+            } else {
+                print("❌ Cannot add room camera input")
+                return
+            }
+            
+            photoOutput = AVCapturePhotoOutput()
+            
+            // Configure for maximum quality room photos (iOS 16+ modern API)
+            if #available(iOS 16.0, *) {
+                photoOutput.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024) // 12MP
+            } else {
+                photoOutput.isHighResolutionCaptureEnabled = true
+            }
+            
+            if captureSession.canAddOutput(photoOutput) {
+                captureSession.addOutput(photoOutput)
+                print("✅ Added room photo output")
+            } else {
+                print("❌ Cannot add room photo output")
+                return
+            }
+            
+            setupPreviewAndUI()
+            
+            DispatchQueue.global(qos: .background).async {
+                self.captureSession.startRunning()
+                print("🎬 Room camera session started")
+            }
+            
+        } catch {
+            print("❌ Room camera setup error: \(error)")
+            showAlert(title: "Camera Error", message: "Failed to set up room camera: \(error.localizedDescription)")
+        }
+    }
+    
+    private func setupPreviewAndUI() {
+        videoPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        videoPreviewLayer.videoGravity = .resizeAspectFill
+        videoPreviewLayer.frame = view.bounds
+        view.layer.addSublayer(videoPreviewLayer)
+        
+        setupUI()
+    }
+    
+    private func setupUI() {
+        // Shutter button - optimized for room photos
+        shutterButton = UIButton()
+        shutterButton.frame = CGRect(x: 0, y: 0, width: 80, height: 80)
+        shutterButton.center = CGPoint(x: view.center.x, y: view.frame.height - 120)
+        shutterButton.backgroundColor = .white
+        shutterButton.layer.cornerRadius = 40
+        shutterButton.layer.borderWidth = 6
+        shutterButton.layer.borderColor = UIColor.systemGreen.cgColor  // Green for room photos
+        
+        // Add inner circle
+        let innerCircle = UIView()
+        innerCircle.frame = CGRect(x: 10, y: 10, width: 60, height: 60)
+        innerCircle.backgroundColor = .white
+        innerCircle.layer.cornerRadius = 30
+        shutterButton.addSubview(innerCircle)
+        
+        shutterButton.addTarget(self, action: #selector(shutterTapped), for: .touchUpInside)
+        view.addSubview(shutterButton)
+        
+        // Cancel button
+        cancelButton = UIButton()
+        cancelButton.frame = CGRect(x: 20, y: 60, width: 80, height: 40)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.setTitleColor(.white, for: .normal)
+        cancelButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        cancelButton.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        cancelButton.layer.cornerRadius = 20
+        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        view.addSubview(cancelButton)
+        
+        // Room photo specific info label
+        let infoLabel = UILabel()
+        infoLabel.frame = CGRect(x: 0, y: view.frame.height - 200, width: view.frame.width, height: 30)
+        infoLabel.text = "Capture room overview - Wide angle recommended"
+        infoLabel.textColor = .white
+        infoLabel.textAlignment = .center
+        infoLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        infoLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        view.addSubview(infoLabel)
+        
+        // Grid overlay for better composition
+        addGridOverlay()
+    }
+    
+    private func addGridOverlay() {
+        let gridView = UIView(frame: view.bounds)
+        gridView.isUserInteractionEnabled = false
+        gridView.alpha = 0.3
+        
+        // Horizontal lines
+        for i in 1...2 {
+            let line = UIView()
+            line.backgroundColor = .white
+            line.frame = CGRect(x: 0, y: gridView.frame.height / 3 * CGFloat(i), width: gridView.frame.width, height: 1)
+            gridView.addSubview(line)
+        }
+        
+        // Vertical lines  
+        for i in 1...2 {
+            let line = UIView()
+            line.backgroundColor = .white
+            line.frame = CGRect(x: gridView.frame.width / 3 * CGFloat(i), y: 0, width: 1, height: gridView.frame.height)
+            gridView.addSubview(line)
+        }
+        
+        view.addSubview(gridView)
+        view.sendSubviewToBack(gridView)
+    }
+    
+    @objc private func shutterTapped() {
+        print("📸 Taking room photo...")
+        
+        shutterButton.isEnabled = false
+        shutterButton.alpha = 0.5
+        
+        let photoSettings = AVCapturePhotoSettings()
+        
+        // Maximum quality for room overview photos (iOS 16+ modern API)
+        if #available(iOS 16.0, *) {
+            photoSettings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+            photoSettings.photoQualityPrioritization = .quality
+        } else {
+            if photoOutput.isHighResolutionCaptureEnabled {
+                photoSettings.isHighResolutionPhotoEnabled = true
+            }
+        }
+        
+        photoOutput.capturePhoto(with: photoSettings, delegate: self)
+    }
+    
+    @objc private func cancelTapped() {
+        print("❌ Room camera cancelled")
+        cleanup()
+        onDismiss?()
+    }
+    
+    private func cleanup() {
+        if captureSession?.isRunning == true {
+            captureSession.stopRunning()
+        }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            self.onDismiss?()
+        })
+        present(alert, animated: true)
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        cleanup()
+    }
+}
+
+extension RoomCameraController: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        DispatchQueue.main.async {
+            self.shutterButton.isEnabled = true
+            self.shutterButton.alpha = 1.0
+        }
+        
+        if let error = error {
+            print("📸❌ Room photo capture error: \(error)")
+            DispatchQueue.main.async {
+                self.showAlert(title: "Photo Error", message: "Failed to capture room photo: \(error.localizedDescription)")
+            }
+            return
+        }
+        
+        guard let imageData = photo.fileDataRepresentation(),
+              let image = UIImage(data: imageData) else {
+            print("📸❌ Failed to process room photo data")
+            DispatchQueue.main.async {
+                self.showAlert(title: "Photo Error", message: "Failed to process room photo.")
+            }
+            return
+        }
+        
+        print("📸✅ Room photo captured successfully - Size: \(image.size)")
+        
+        DispatchQueue.main.async {
+            self.cleanup()
+            self.onPhotoTaken?(image)
+            self.onDismiss?()
+        }
+    }
+}
+
+// MARK: - Custom Camera for Inventory Items
+struct InventoryItemCameraView: UIViewControllerRepresentable {
+    let onPhotoTaken: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    func makeUIViewController(context: Context) -> InventoryItemCameraController {
+        let controller = InventoryItemCameraController()
+        controller.onPhotoTaken = onPhotoTaken
+        controller.onDismiss = { dismiss() }
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: InventoryItemCameraController, context: Context) {}
+}
+
+class InventoryItemCameraController: UIViewController {
+    var onPhotoTaken: ((UIImage) -> Void)?
+    var onDismiss: (() -> Void)?
+    
+    private var captureSession: AVCaptureSession!
+    private var videoPreviewLayer: AVCaptureVideoPreviewLayer!
+    private var photoOutput: AVCapturePhotoOutput!
+    private var currentCamera: AVCaptureDevice!
+    private var currentCameraInput: AVCaptureDeviceInput!
+    
+    private var shutterButton: UIButton!
+    private var cancelButton: UIButton!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        print("🏠📷 Inventory Item Camera loading...")
+        checkCameraPermission()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        videoPreviewLayer?.frame = view.bounds
+    }
+    
+    private func checkCameraPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            print("📷✅ Camera authorized, setting up camera")
+            setupCameraAndUI()
+        case .denied:
+            print("📷❌ Camera denied")
+            showAlert(title: "Camera Access Required", message: "Please enable camera access in Settings to take photos.")
+        case .restricted:
+            print("📷⛔ Camera restricted")
+            showAlert(title: "Camera Restricted", message: "Camera access is restricted on this device.")
+        case .notDetermined:
+            print("📷❓ Camera permission not determined, requesting...")
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        print("📷✅ Camera permission granted")
+                        self.setupCameraAndUI()
+                    } else {
+                        print("📷❌ Camera permission denied by user")
+                        self.showAlert(title: "Camera Access Required", message: "Please enable camera access to take photos.")
+                    }
+                }
+            }
+        @unknown default:
+            print("📷❓ Unknown camera permission status")
+            showAlert(title: "Camera Error", message: "Unable to determine camera permissions.")
+        }
+    }
+    
+    private func setupCameraAndUI() {
+        print("🔧 Setting up camera session...")
+        
+        captureSession = AVCaptureSession()
+        captureSession.sessionPreset = .photo  // High resolution for inventory photos
+        
+        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            print("❌ No back camera found")
+            showAlert(title: "Camera Error", message: "Unable to access camera.")
+            return
+        }
+        
+        print("📷 Found camera device: \(camera.localizedName)")
+        currentCamera = camera
+        
+        do {
+            currentCameraInput = try AVCaptureDeviceInput(device: camera)
+            
+            if captureSession.canAddInput(currentCameraInput) {
+                captureSession.addInput(currentCameraInput)
+                print("✅ Added camera input")
+            } else {
+                print("❌ Cannot add camera input")
+                return
+            }
+            
+            photoOutput = AVCapturePhotoOutput()
+            
+            // Configure for high-quality photos (iOS 16+ modern API)
+            if #available(iOS 16.0, *) {
+                photoOutput.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024) // 12MP
+            } else {
+                photoOutput.isHighResolutionCaptureEnabled = true
+            }
+            
+            if captureSession.canAddOutput(photoOutput) {
+                captureSession.addOutput(photoOutput)
+                print("✅ Added photo output")
+            } else {
+                print("❌ Cannot add photo output")
+                return
+            }
+            
+            setupPreviewAndUI()
+            
+            DispatchQueue.global(qos: .background).async {
+                self.captureSession.startRunning()
+                print("🎬 Camera session started")
+            }
+            
+        } catch {
+            print("❌ Camera setup error: \(error)")
+            showAlert(title: "Camera Error", message: "Failed to set up camera: \(error.localizedDescription)")
+        }
+    }
+    
+    private func setupPreviewAndUI() {
+        videoPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        videoPreviewLayer.videoGravity = .resizeAspectFill
+        videoPreviewLayer.frame = view.bounds
+        view.layer.addSublayer(videoPreviewLayer)
+        
+        setupUI()
+    }
+    
+    private func setupUI() {
+        // Shutter button - large and accessible
+        shutterButton = UIButton()
+        shutterButton.frame = CGRect(x: 0, y: 0, width: 80, height: 80)
+        shutterButton.center = CGPoint(x: view.center.x, y: view.frame.height - 120)
+        shutterButton.backgroundColor = .white
+        shutterButton.layer.cornerRadius = 40
+        shutterButton.layer.borderWidth = 6
+        shutterButton.layer.borderColor = UIColor.systemBlue.cgColor
+        
+        // Add inner circle for professional look
+        let innerCircle = UIView()
+        innerCircle.frame = CGRect(x: 10, y: 10, width: 60, height: 60)
+        innerCircle.backgroundColor = .white
+        innerCircle.layer.cornerRadius = 30
+        shutterButton.addSubview(innerCircle)
+        
+        shutterButton.addTarget(self, action: #selector(shutterTapped), for: .touchUpInside)
+        view.addSubview(shutterButton)
+        
+        // Cancel button - top left
+        cancelButton = UIButton()
+        cancelButton.frame = CGRect(x: 20, y: 60, width: 80, height: 40)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.setTitleColor(.white, for: .normal)
+        cancelButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        cancelButton.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        cancelButton.layer.cornerRadius = 20
+        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        view.addSubview(cancelButton)
+        
+        // Camera info label
+        let infoLabel = UILabel()
+        infoLabel.frame = CGRect(x: 0, y: view.frame.height - 200, width: view.frame.width, height: 30)
+        infoLabel.text = "Tap to take high-resolution photo"
+        infoLabel.textColor = .white
+        infoLabel.textAlignment = .center
+        infoLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        infoLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        view.addSubview(infoLabel)
+    }
+    
+    @objc private func shutterTapped() {
+        print("📸 Taking photo...")
+        
+        // Disable button during capture
+        shutterButton.isEnabled = false
+        shutterButton.alpha = 0.5
+        
+        // Configure photo settings for high quality
+        let photoSettings = AVCapturePhotoSettings()
+        
+        // Enable high resolution and quality (iOS 16+ modern API)
+        if #available(iOS 16.0, *) {
+            photoSettings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+            photoSettings.photoQualityPrioritization = .quality
+        } else {
+            if photoOutput.isHighResolutionCaptureEnabled {
+                photoSettings.isHighResolutionPhotoEnabled = true
+            }
+        }
+        
+        // Take photo
+        photoOutput.capturePhoto(with: photoSettings, delegate: self)
+    }
+    
+    @objc private func cancelTapped() {
+        print("❌ Camera cancelled")
+        cleanup()
+        onDismiss?()
+    }
+    
+    private func cleanup() {
+        if captureSession?.isRunning == true {
+            captureSession.stopRunning()
+        }
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            self.onDismiss?()
+        })
+        present(alert, animated: true)
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        cleanup()
+    }
+}
+
+extension InventoryItemCameraController: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        // Re-enable button
+        DispatchQueue.main.async {
+            self.shutterButton.isEnabled = true
+            self.shutterButton.alpha = 1.0
+        }
+        
+        if let error = error {
+            print("📸❌ Photo capture error: \(error)")
+            DispatchQueue.main.async {
+                self.showAlert(title: "Photo Error", message: "Failed to capture photo: \(error.localizedDescription)")
+            }
+            return
+        }
+        
+        guard let imageData = photo.fileDataRepresentation(),
+              let image = UIImage(data: imageData) else {
+            print("📸❌ Failed to process photo data")
+            DispatchQueue.main.async {
+                self.showAlert(title: "Photo Error", message: "Failed to process captured photo.")
+            }
+            return
+        }
+        
+        print("📸✅ Photo captured successfully - Size: \(image.size)")
+        
+        DispatchQueue.main.async {
+            self.cleanup()
+            self.onPhotoTaken?(image)
+            self.onDismiss?()
+        }
+    }
+}
+
+// MARK: - Safe Image Picker (for photo library only)
 struct SafeImagePickerView: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage?) -> Void

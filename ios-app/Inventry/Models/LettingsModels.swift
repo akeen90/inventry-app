@@ -48,6 +48,7 @@ struct Tenant: Identifiable, Codable {
 }
 
 enum InventoryType: String, CaseIterable, Codable {
+    case inventory = "inventory"
     case checkIn = "check_in"
     case checkOut = "check_out"
     case midTerm = "mid_term"
@@ -56,6 +57,7 @@ enum InventoryType: String, CaseIterable, Codable {
     
     var displayName: String {
         switch self {
+        case .inventory: return "Inventory"
         case .checkIn: return "Check-in"
         case .checkOut: return "Check-out"
         case .midTerm: return "Mid-term"

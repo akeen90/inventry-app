@@ -62,6 +62,7 @@ struct Room: Identifiable, Codable {
     var name: String
     var type: RoomType
     var items: [InventoryItem]
+    var photos: [PhotoReference] // Room overview photos
     var notes: String?
     var createdAt: Date
     var updatedAt: Date
@@ -71,6 +72,7 @@ struct Room: Identifiable, Codable {
         self.name = name
         self.type = type
         self.items = []
+        self.photos = []
         self.notes = nil
         self.createdAt = Date()
         self.updatedAt = Date()
