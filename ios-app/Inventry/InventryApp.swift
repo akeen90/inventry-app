@@ -10,8 +10,22 @@ struct InventryApp: App {
         print("📋 Ready for property inventory management")
         print("🔥 Firebase configured successfully!")
         
-        // Initialize mock data for development
+        // Initialize Core Data and sync services
+        setupLocalStorage()
         setupDevelopmentEnvironment()
+    }
+    
+    private func setupLocalStorage() {
+        // Initialize Core Data stack
+        _ = CoreDataStack.shared
+        
+        // Initialize local storage service
+        _ = LocalStorageService.shared
+        
+        // Initialize sync service
+        _ = SyncService.shared
+        
+        print("💾 Local storage and sync services initialized")
     }
     
     private func setupDevelopmentEnvironment() {

@@ -67,6 +67,7 @@ struct ReportsView: View {
 struct SettingsView: View {
     @StateObject private var firebaseService = FirebaseService.shared
     @StateObject private var authService = AuthenticationService.shared
+    @StateObject private var syncService = SyncService.shared
     
     var body: some View {
         NavigationView {
@@ -93,7 +94,7 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section("Connection") {
+                Section("Connection & Sync") {
                     HStack {
                         Image(systemName: connectionIcon)
                             .foregroundColor(connectionColor)
@@ -112,6 +113,33 @@ struct SettingsView: View {
                             .background(firebaseService.isOnline ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
                             .foregroundColor(firebaseService.isOnline ? .green : .orange)
                             .cornerRadius(4)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    HStack {
+                        Image(systemName: syncService.isSyncing ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
+                            .foregroundColor(syncService.isSyncing ? .blue : .green)
+                        VStack(alignment: .leading) {
+                            Text("Data Sync")
+                                .font(.headline)
+                            Text(syncService.getSyncStatus())
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if !syncService.isSyncing {
+                            Button("Sync Now") {
+                                Task {
+                                    await syncService.manualSync()
+                                }
+                            }
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.2))
+                            .foregroundColor(.blue)
+                            .cornerRadius(4)
+                        }
                     }
                     .padding(.vertical, 4)
                 }

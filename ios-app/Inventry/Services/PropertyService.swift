@@ -7,6 +7,7 @@ class PropertyService: ObservableObject {
     @Published var errorMessage: String?
     
     private let firebaseService = FirebaseService.shared
+    private let localStorageService = LocalStorageService.shared
     
     // Helper enum for inventory progress levels
     private enum InventoryProgressLevel {
@@ -281,12 +282,26 @@ class PropertyService: ObservableObject {
             
             let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
-            // For now, use mock data filtered by user
-            // TODO: Replace with real Firebase fetch
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-            properties = getMockProperties(for: currentUserEmail)
+            // First, load from local cache
+            await MainActor.run {
+                properties = localStorageService.cachedProperties
+            }
             
-            print("🏠 Loaded \(properties.count) properties for user: \(currentUserEmail)")
+            print("📱 Loaded \(properties.count) properties from local cache")
+            
+            // If local cache is empty, populate with mock data for development
+            if properties.isEmpty {
+                let mockProperties = getMockProperties(for: currentUserEmail)
+                for property in mockProperties {
+                    await localStorageService.saveProperty(property)
+                }
+                await MainActor.run {
+                    properties = localStorageService.cachedProperties
+                }
+                print("🔧 Populated local storage with mock data: \(properties.count) properties")
+            }
+            
+            print("🏠 Total properties loaded for user: \(currentUserEmail) - \(properties.count)")
             
         } catch {
             errorMessage = "Failed to load properties: \(error.localizedDescription)"
@@ -300,9 +315,15 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase create
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-            properties.append(property)
+            // Save to local storage first
+            await localStorageService.saveProperty(property)
+            
+            // Update local array
+            await MainActor.run {
+                properties = localStorageService.cachedProperties
+            }
+            
+            print("✅ Property added to local storage: \(property.name)")
         } catch {
             errorMessage = "Failed to add property: \(error.localizedDescription)"
         }
@@ -315,11 +336,16 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase update
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-            if let index = properties.firstIndex(where: { $0.id == property.id }) {
-                properties[index] = property
+            // Update last accessed time and save to local storage
+            await localStorageService.updatePropertyAccess(property.id)
+            await localStorageService.saveProperty(property)
+            
+            // Update local array
+            await MainActor.run {
+                properties = localStorageService.cachedProperties
             }
+            
+            print("✅ Property updated in local storage: \(property.name)")
         } catch {
             errorMessage = "Failed to update property: \(error.localizedDescription)"
         }
@@ -332,9 +358,15 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase delete
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-            properties.removeAll { $0.id == property.id }
+            // Delete from local storage
+            await localStorageService.deleteProperty(property.id)
+            
+            // Update local array
+            await MainActor.run {
+                properties = localStorageService.cachedProperties
+            }
+            
+            print("✅ Property deleted from local storage: \(property.name)")
         } catch {
             errorMessage = "Failed to delete property: \(error.localizedDescription)"
         }

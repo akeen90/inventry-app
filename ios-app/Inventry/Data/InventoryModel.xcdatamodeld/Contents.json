@@ -1,0 +1,281 @@
+{
+  "formatVersion" : 1,
+  "models" : [
+    {
+      "configurations" : [
+
+      ],
+      "entities" : [
+        {
+          "name" : "PropertyEntity",
+          "representedClassName" : "PropertyEntity",
+          "userInfo" : {
+
+          },
+          "attributes" : [
+            {
+              "name" : "id",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "userId",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "name",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "address",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "type",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "status",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "inventoryType",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "landlordData",
+              "type" : "Binary",
+              "optional" : true
+            },
+            {
+              "name" : "tenantData",
+              "type" : "Binary",
+              "optional" : true
+            },
+            {
+              "name" : "propertyPhotoData",
+              "type" : "Binary",
+              "optional" : true
+            },
+            {
+              "name" : "createdAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "updatedAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "lastAccessedAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "isSynced",
+              "type" : "Boolean",
+              "optional" : false
+            },
+            {
+              "name" : "needsUpload",
+              "type" : "Boolean",
+              "optional" : false
+            }
+          ],
+          "relationships" : [
+            {
+              "name" : "inventoryReport",
+              "destination" : "InventoryReportEntity",
+              "cardinality" : "Optional",
+              "deleteRule" : "Cascade"
+            }
+          ]
+        },
+        {
+          "name" : "InventoryReportEntity",
+          "representedClassName" : "InventoryReportEntity",
+          "userInfo" : {
+
+          },
+          "attributes" : [
+            {
+              "name" : "id",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "completionPercentage",
+              "type" : "Double",
+              "optional" : false
+            },
+            {
+              "name" : "totalItems",
+              "type" : "Integer 32",
+              "optional" : false
+            },
+            {
+              "name" : "completedItems",
+              "type" : "Integer 32",
+              "optional" : false
+            },
+            {
+              "name" : "createdAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "updatedAt",
+              "type" : "Date",
+              "optional" : false
+            }
+          ],
+          "relationships" : [
+            {
+              "name" : "property",
+              "destination" : "PropertyEntity",
+              "cardinality" : "Required",
+              "inverse" : "inventoryReport"
+            },
+            {
+              "name" : "rooms",
+              "destination" : "RoomEntity",
+              "cardinality" : "To Many",
+              "deleteRule" : "Cascade"
+            }
+          ]
+        },
+        {
+          "name" : "RoomEntity",
+          "representedClassName" : "RoomEntity",
+          "userInfo" : {
+
+          },
+          "attributes" : [
+            {
+              "name" : "id",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "name",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "type",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "notes",
+              "type" : "String",
+              "optional" : true
+            },
+            {
+              "name" : "createdAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "updatedAt",
+              "type" : "Date",
+              "optional" : false
+            }
+          ],
+          "relationships" : [
+            {
+              "name" : "inventoryReport",
+              "destination" : "InventoryReportEntity",
+              "cardinality" : "Required",
+              "inverse" : "rooms"
+            },
+            {
+              "name" : "items",
+              "destination" : "InventoryItemEntity",
+              "cardinality" : "To Many",
+              "deleteRule" : "Cascade"
+            }
+          ]
+        },
+        {
+          "name" : "InventoryItemEntity",
+          "representedClassName" : "InventoryItemEntity",
+          "userInfo" : {
+
+          },
+          "attributes" : [
+            {
+              "name" : "id",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "name",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "itemDescription",
+              "type" : "String",
+              "optional" : true
+            },
+            {
+              "name" : "condition",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "category",
+              "type" : "String",
+              "optional" : false
+            },
+            {
+              "name" : "notes",
+              "type" : "String",
+              "optional" : true
+            },
+            {
+              "name" : "photosData",
+              "type" : "Binary",
+              "optional" : true
+            },
+            {
+              "name" : "createdAt",
+              "type" : "Date",
+              "optional" : false
+            },
+            {
+              "name" : "updatedAt",
+              "type" : "Date",
+              "optional" : false
+            }
+          ],
+          "relationships" : [
+            {
+              "name" : "room",
+              "destination" : "RoomEntity",
+              "cardinality" : "Required",
+              "inverse" : "items"
+            }
+          ]
+        }
+      ],
+      "fetchedPropertiesConfiguration" : [
+
+      ],
+      "userInfo" : {
+
+      },
+      "versionIdentifiers" : [
+        "1.0"
+      ]
+    }
+  ]
+}
