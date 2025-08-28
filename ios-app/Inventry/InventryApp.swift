@@ -16,16 +16,12 @@ struct InventryApp: App {
     }
     
     private func setupLocalStorage() {
-        // Initialize Core Data stack
-        _ = CoreDataStack.shared
+        // TODO: Initialize Core Data stack (files need to be added to Xcode project)
+        // _ = CoreDataStack.shared
+        // _ = LocalStorageService.shared  
+        // _ = SyncService.shared
         
-        // Initialize local storage service
-        _ = LocalStorageService.shared
-        
-        // Initialize sync service
-        _ = SyncService.shared
-        
-        print("💾 Local storage and sync services initialized")
+        print("💾 Local storage services ready to initialize (need project file updates)")
     }
     
     private func setupDevelopmentEnvironment() {
