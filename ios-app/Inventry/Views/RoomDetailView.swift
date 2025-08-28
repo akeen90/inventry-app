@@ -139,11 +139,16 @@ struct EmptyPhotoView: View {
 
 
 struct RoomDetailView: View {
-    let room: Room
-    @StateObject private var inventoryService = InventoryService()
+    let initialRoom: Room  // Changed to initialRoom
+    @ObservedObject var inventoryService: InventoryService  // Changed from @StateObject to @ObservedObject
     @State private var showingAddItem = false
     @State private var selectedItem: InventoryItem?
     @Environment(\.dismiss) private var dismiss
+    
+    // Computed property to get the current room from inventoryService
+    var room: Room {
+        inventoryService.currentReport?.rooms.first(where: { $0.id == initialRoom.id }) ?? initialRoom
+    }
     
     var body: some View {
         NavigationView {
@@ -182,7 +187,12 @@ struct RoomDetailView: View {
             .sheet(isPresented: $showingAddItem) {
                 AddInventoryItemView(
                     roomId: room.id,
-                    inventoryService: inventoryService
+                    inventoryService: inventoryService,
+                    onSaveComplete: {
+                        showingAddItem = false
+                        // Force UI update
+                        inventoryService.objectWillChange.send()
+                    }
                 )
             }
             .sheet(item: $selectedItem) { item in
@@ -190,11 +200,17 @@ struct RoomDetailView: View {
                     item: item,
                     roomId: room.id,
                     inventoryService: inventoryService,
-                    onComplete: {
+                    onSaveComplete: {
                         selectedItem = nil
+                        // Force UI update
+                        inventoryService.objectWillChange.send()
                     }
                 )
             }
+        }
+        .onAppear {
+            print("📍 RoomDetailView appeared for room: \(room.name)")
+            print("📍 Room has \(room.items.count) items")
         }
     }
 }
@@ -300,7 +316,7 @@ struct ItemsListView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Items")
+            Text("Items (\(items.count))")
                 .font(.headline)
             
             if items.isEmpty {
@@ -427,6 +443,7 @@ struct EmptyItemsView: View {
 struct AddInventoryItemView: View {
     let roomId: UUID
     @ObservedObject var inventoryService: InventoryService
+    let onSaveComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
     
     @State private var itemName = ""
@@ -436,6 +453,8 @@ struct AddInventoryItemView: View {
     @State private var notes = ""
     @State private var capturedImages: [UIImage] = []
     @State private var isSubmitting = false
+    @State private var showError = false
+    @State private var errorMessage = ""
     
     var body: some View {
         NavigationView {
@@ -492,34 +511,60 @@ struct AddInventoryItemView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isSubmitting)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await addItem()
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            Task {
+                                await saveItem()
+                            }
                         }
+                        .disabled(itemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .fontWeight(.semibold)
                     }
-                    .disabled(isSubmitting || itemName.isEmpty)
                 }
             }
             .disabled(isSubmitting)
+            .overlay(
+                Group {
+                    if isSubmitting {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .overlay(
+                                VStack(spacing: 20) {
+                                    ProgressView()
+                                    Text("Saving item...")
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(radius: 10)
+                            )
+                    }
+                }
+            )
+        }
+        .alert("Error Saving Item", isPresented: $showError) {
+            Button("OK") {
+                showError = false
+            }
+        } message: {
+            Text(errorMessage)
         }
     }
     
-    private func addItem() async {
+    private func saveItem() async {
+        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        
         isSubmitting = true
         
-        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        print("📝 Starting add item")
-        print("📝 Item name: '\(trimmedName)'")
-        
-        guard !trimmedName.isEmpty else {
-            print("❌ Item name is empty, aborting add")
-            isSubmitting = false
-            return
-        }
+        print("✅ Saving item: \(trimmedName)")
         
         var newItem = InventoryItem(
             name: trimmedName,
@@ -536,23 +581,27 @@ struct AddInventoryItemView: View {
         }
         
         // Add photos
-        newItem.photos = capturedImages.map { image in
-            PhotoReference(
-                filename: "item_\(newItem.id.uuidString)_\(UUID().uuidString).jpg"
-            )
+        newItem.photos = capturedImages.map { _ in
+            PhotoReference(filename: "item_\(newItem.id.uuidString)_\(UUID().uuidString).jpg")
         }
         
+        print("✅ Item created with ID: \(newItem.id)")
+        
+        // Save the item
         await inventoryService.addItemToRoom(newItem, roomId: roomId)
         
-        isSubmitting = false
-        
-        print("📝 Add result - Error: \(inventoryService.errorMessage ?? "none")")
-        
-        if inventoryService.errorMessage == nil {
-            print("✅ Add successful, calling dismiss")
-            dismiss()
+        // Check if save was successful
+        if let error = inventoryService.errorMessage {
+            print("❌ Save failed: \(error)")
+            errorMessage = error
+            showError = true
+            isSubmitting = false
         } else {
-            print("❌ Add failed: \(inventoryService.errorMessage!)")
+            print("✅ Item saved successfully!")
+            // Close the sheet
+            dismiss()
+            // Notify parent view
+            onSaveComplete()
         }
     }
 }
@@ -561,7 +610,7 @@ struct EditInventoryItemView: View {
     let item: InventoryItem
     let roomId: UUID
     @ObservedObject var inventoryService: InventoryService
-    let onComplete: (() -> Void)?
+    let onSaveComplete: () -> Void
     @Environment(\.dismiss) private var dismiss
     
     @State private var itemName: String
@@ -572,12 +621,14 @@ struct EditInventoryItemView: View {
     @State private var isComplete: Bool
     @State private var capturedImages: [UIImage] = []
     @State private var isSubmitting = false
+    @State private var showError = false
+    @State private var errorMessage = ""
     
-    init(item: InventoryItem, roomId: UUID, inventoryService: InventoryService, onComplete: (() -> Void)? = nil) {
+    init(item: InventoryItem, roomId: UUID, inventoryService: InventoryService, onSaveComplete: @escaping () -> Void) {
         self.item = item
         self.roomId = roomId
         self.inventoryService = inventoryService
-        self.onComplete = onComplete
+        self.onSaveComplete = onSaveComplete
         
         _itemName = State(initialValue: item.name)
         _selectedCategory = State(initialValue: item.category)
@@ -585,7 +636,6 @@ struct EditInventoryItemView: View {
         _description = State(initialValue: item.description ?? "")
         _notes = State(initialValue: item.notes ?? "")
         _isComplete = State(initialValue: item.isComplete)
-        _capturedImages = State(initialValue: [])
     }
     
     var body: some View {
@@ -648,6 +698,17 @@ struct EditInventoryItemView: View {
                         }
                     )
                 }
+                
+                Section {
+                    Button(role: .destructive) {
+                        Task {
+                            await deleteItem()
+                        }
+                    } label: {
+                        Label("Delete Item", systemImage: "trash")
+                            .foregroundColor(.red)
+                    }
+                }
             }
             .navigationTitle("Edit Item")
             .navigationBarTitleDisplayMode(.inline)
@@ -656,34 +717,60 @@ struct EditInventoryItemView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isSubmitting)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        Task {
-                            await updateItem()
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            Task {
+                                await updateItem()
+                            }
                         }
+                        .disabled(itemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .fontWeight(.semibold)
                     }
-                    .disabled(isSubmitting || itemName.isEmpty)
                 }
             }
             .disabled(isSubmitting)
+            .overlay(
+                Group {
+                    if isSubmitting {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .overlay(
+                                VStack(spacing: 20) {
+                                    ProgressView()
+                                    Text("Saving changes...")
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                                .shadow(radius: 10)
+                            )
+                    }
+                }
+            )
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK") {
+                showError = false
+            }
+        } message: {
+            Text(errorMessage)
         }
     }
     
     private func updateItem() async {
+        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        
         isSubmitting = true
         
-        let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        print("📝 Starting update for item: \(item.id)")
-        print("📝 Item name: '\(trimmedName)'")
-        
-        guard !trimmedName.isEmpty else {
-            print("❌ Item name is empty, aborting update")
-            isSubmitting = false
-            return
-        }
+        print("✅ Updating item: \(trimmedName)")
         
         var updatedItem = item
         updatedItem.name = trimmedName
@@ -694,67 +781,45 @@ struct EditInventoryItemView: View {
         updatedItem.isComplete = isComplete
         updatedItem.updatedAt = Date()
         
-        // Add any new photos to existing photos
+        // Add any new photos
         if !capturedImages.isEmpty {
-            let newPhotos = capturedImages.map { image in
-                PhotoReference(
-                    filename: "item_\(updatedItem.id.uuidString)_\(UUID().uuidString).jpg"
-                )
+            let newPhotos = capturedImages.map { _ in
+                PhotoReference(filename: "item_\(updatedItem.id.uuidString)_\(UUID().uuidString).jpg")
             }
             updatedItem.photos.append(contentsOf: newPhotos)
         }
         
         await inventoryService.updateItemInRoom(updatedItem, roomId: roomId)
         
-        isSubmitting = false
-        
-        print("📝 Update result - Error: \(inventoryService.errorMessage ?? "none")")
-        
-        if inventoryService.errorMessage == nil {
-            print("✅ Update successful, calling onComplete")
-            onComplete?()
+        if let error = inventoryService.errorMessage {
+            print("❌ Update failed: \(error)")
+            errorMessage = error
+            showError = true
+            isSubmitting = false
         } else {
-            print("❌ Update failed: \(inventoryService.errorMessage!)")
+            print("✅ Item updated successfully!")
+            dismiss()
+            onSaveComplete()
         }
     }
-}
-
-// MARK: - Room Photo Components
-struct RoomPhotoThumbnail: View {
-    let photo: PhotoReference
     
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 80, height: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            
-            if let image = photo.originalImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                VStack(spacing: 4) {
-                    Image(systemName: "photo")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                    Text("Loading...")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
+    private func deleteItem() async {
+        isSubmitting = true
+        
+        await inventoryService.deleteItemFromRoom(item, roomId: roomId)
+        
+        if let error = inventoryService.errorMessage {
+            errorMessage = error
+            showError = true
+            isSubmitting = false
+        } else {
+            dismiss()
+            onSaveComplete()
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-        )
     }
 }
 
-// MARK: - Safe Image Picker (for photo library only)
+// MARK: - Safe Image Picker
 struct SafeImagePickerView: UIViewControllerRepresentable {
     let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage?) -> Void
@@ -762,13 +827,9 @@ struct SafeImagePickerView: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        let coordinator = makeCoordinator()
-        
-        // Basic setup with safety checks
-        picker.delegate = coordinator
+        picker.delegate = context.coordinator
         picker.allowsEditing = true
         picker.sourceType = sourceType
-        
         return picker
     }
     
@@ -783,29 +844,17 @@ struct SafeImagePickerView: UIViewControllerRepresentable {
         
         init(_ parent: SafeImagePickerView) {
             self.parent = parent
-            super.init()
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage
-            
-            DispatchQueue.main.async {
-                self.parent.onImagePicked(image)
-                self.parent.dismiss()
-            }
+            parent.onImagePicked(image)
+            parent.dismiss()
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            DispatchQueue.main.async {
-                self.parent.onImagePicked(nil)
-                self.parent.dismiss()
-            }
+            parent.onImagePicked(nil)
+            parent.dismiss()
         }
     }
-}
-
-
-#Preview {
-    let sampleRoom = Room(name: "Living Room", type: .livingRoom)
-    return RoomDetailView(room: sampleRoom)
 }

@@ -42,6 +42,7 @@ struct PropertyDetailView: View {
                         // Enhanced Rooms List
                         ModernRoomsListView(
                             rooms: inventoryService.currentReport?.rooms ?? [],
+                            inventoryService: inventoryService,
                             onRoomTap: { room in
                                 // Navigation will be handled by NavigationLink in ModernRoomsListView
                             }
@@ -458,6 +459,7 @@ struct ActionButton: View {
 
 struct ModernRoomsListView: View {
     let rooms: [Room]
+    let inventoryService: InventoryService
     let onRoomTap: (Room) -> Void
     
     var body: some View {
@@ -487,7 +489,7 @@ struct ModernRoomsListView: View {
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(rooms) { room in
-                        NavigationLink(destination: RoomDetailView(room: room)) {
+                        NavigationLink(destination: RoomDetailView(initialRoom: room, inventoryService: inventoryService)) {
                             ModernRoomCard(room: room)
                         }
                         .buttonStyle(PlainButtonStyle())
