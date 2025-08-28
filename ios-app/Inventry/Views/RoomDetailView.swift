@@ -2,161 +2,141 @@ import SwiftUI
 import UIKit
 import AVFoundation
 
-// MARK: - iOS-Native Camera Components
-enum CameraMode {
-    case item
-    case room
-    
-    var title: String {
-        switch self {
-        case .item: return "Take Item Photo"
-        case .room: return "Take Room Photo"
-        }
-    }
-    
-    var instructions: String {
-        switch self {
-        case .item: return "Focus on the specific item"
-        case .room: return "Capture the entire room view"
-        }
-    }
-}
-
-struct ModernCameraView: UIViewControllerRepresentable {
-    let onPhotoTaken: (UIImage) -> Void
-    let cameraMode: CameraMode
-    @Environment(\.dismiss) private var dismiss
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.delegate = context.coordinator
-        picker.sourceType = .camera
-        picker.allowsEditing = true
-        picker.cameraDevice = .rear
-        
-        if #available(iOS 13.0, *) {
-            picker.overrideUserInterfaceStyle = .dark
-        }
-        
-        if cameraMode == .room {
-            if UIImagePickerController.isCameraDeviceAvailable(.rear) {
-                picker.cameraDevice = .rear
-            }
-        }
-        
-        picker.cameraCaptureMode = .photo
-        picker.cameraFlashMode = .auto
-        
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
-        uiViewController.title = cameraMode.title
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ModernCameraView
-        
-        init(_ parent: ModernCameraView) {
-            self.parent = parent
-            super.init()
-        }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            var finalImage: UIImage?
-            
-            if let editedImage = info[.editedImage] as? UIImage {
-                finalImage = editedImage
-            } else if let originalImage = info[.originalImage] as? UIImage {
-                finalImage = originalImage
-            }
-            
-            if let image = finalImage {
-                let optimizedImage = optimizeImage(image, for: parent.cameraMode)
-                
-                DispatchQueue.main.async {
-                    self.parent.onPhotoTaken(optimizedImage)
-                    self.parent.dismiss()
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.parent.dismiss()
-                }
-            }
-        }
-        
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            DispatchQueue.main.async {
-                self.parent.dismiss()
-            }
-        }
-        
-        private func optimizeImage(_ image: UIImage, for mode: CameraMode) -> UIImage {
-            let targetSize: CGSize
-            
-            switch mode {
-            case .room:
-                targetSize = CGSize(width: 2048, height: 1536)
-            case .item:
-                targetSize = CGSize(width: 2048, height: 1536)
-            }
-            
-            return resizeImage(image, to: targetSize) ?? image
-        }
-        
-        private func resizeImage(_ image: UIImage, to targetSize: CGSize) -> UIImage? {
-            let size = image.size
-            
-            if size.width <= targetSize.width && size.height <= targetSize.height {
-                return image
-            }
-            
-            let widthRatio = targetSize.width / size.width
-            let heightRatio = targetSize.height / size.height
-            let ratio = min(widthRatio, heightRatio)
-            
-            let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
-            
-            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-            defer { UIGraphicsEndImageContext() }
-            
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-            return UIGraphicsGetImageFromCurrentImageContext()
-        }
-    }
-}
-
-struct QuickCameraButton: View {
-    let onPhotoTaken: (UIImage) -> Void
-    let cameraMode: CameraMode
-    let title: String
-    
-    @State private var showingCamera = false
+// MARK: - Photo Gallery Components
+struct PhotoGalleryView: View {
+    let images: [UIImage]
+    let onDelete: ((Int) -> Void)?
+    let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
     
     var body: some View {
-        Button(action: {
-            showingCamera = true
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: "camera")
-                    .font(.system(size: 14, weight: .medium))
-                Text(title)
-                    .font(.system(size: 14, weight: .medium))
+        if images.isEmpty {
+            EmptyPhotoView()
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("\(images.count) Photo\(images.count == 1 ? "" : "s")", systemImage: "photo.stack")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                }
+                
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(images.indices, id: \.self) { index in
+                        PhotoThumbnailView(
+                            image: images[index],
+                            onDelete: onDelete != nil ? {
+                                onDelete?(index)
+                            } : nil
+                        )
+                    }
+                }
             }
-            .foregroundColor(.blue)
-        }
-        .sheet(isPresented: $showingCamera) {
-            ModernCameraView(
-                onPhotoTaken: onPhotoTaken,
-                cameraMode: cameraMode
-            )
         }
     }
 }
+
+struct PhotoThumbnailView: View {
+    let image: UIImage
+    let onDelete: (() -> Void)?
+    @State private var showingFullScreen = false
+    
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 110)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                )
+                .onTapGesture {
+                    showingFullScreen = true
+                }
+            
+            if let onDelete = onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.white)
+                        .background(
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 24, height: 24)
+                        )
+                        .shadow(radius: 2)
+                }
+                .offset(x: 8, y: -8)
+            }
+        }
+        .sheet(isPresented: $showingFullScreen) {
+            FullScreenPhotoView(image: image)
+        }
+    }
+}
+
+struct FullScreenPhotoView: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+            }
+        }
+    }
+}
+
+struct EmptyPhotoView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "photo.stack")
+                .font(.system(size: 40))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            Text("No photos added")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text("Tap the camera button to add photos")
+                .font(.caption)
+                .foregroundColor(.secondary.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                        .foregroundColor(.gray.opacity(0.3))
+                )
+        )
+    }
+}
+
+
 
 struct RoomDetailView: View {
     let room: Room
@@ -273,50 +253,22 @@ struct RoomHeaderView: View {
                     
                     Spacer()
                     
-                    QuickCameraButton(
-                        onPhotoTaken: { image in
-                            roomImages.append(image)
-                        },
-                        cameraMode: .room,
-                        title: "Take Photo"
+                    WorkingCameraButton(
+                        title: "Take Photos",
+                        allowMultiple: true,
+                        onPhotosCaptured: { images in
+                            roomImages.append(contentsOf: images)
+                        }
                     )
                 }
                 
-                if roomImages.isEmpty && room.photos.isEmpty {
-                    HStack {
-                        Image(systemName: "photo")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                        
-                        Text("No room photos added yet")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                // Show photos in modern gallery
+                PhotoGalleryView(
+                    images: roomImages,
+                    onDelete: { index in
+                        roomImages.remove(at: index)
                     }
-                    .padding(.vertical, 8)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            // Show existing photos from room model
-                            ForEach(0..<room.photos.count, id: \.self) { index in
-                                RoomPhotoThumbnail(photo: room.photos[index])
-                            }
-                            
-                            // Show newly captured photos
-                            ForEach(0..<roomImages.count, id: \.self) { index in
-                                Image(uiImage: roomImages[index])
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color.blue, lineWidth: 2)
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 4)
-                    }
-                }
+                )
             }
             
             if let notes = room.notes, !notes.isEmpty {
@@ -480,7 +432,6 @@ struct AddInventoryItemView: View {
     @State private var description = ""
     @State private var notes = ""
     @State private var capturedImages: [UIImage] = []
-    @State private var showingImagePicker = false
     @State private var isSubmitting = false
     
     var body: some View {
@@ -515,48 +466,20 @@ struct AddInventoryItemView: View {
                 }
                 
                 Section("Photos") {
-                    if capturedImages.isEmpty {
-                        Text("No photos added")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(0..<capturedImages.count, id: \.self) { index in
-                                    ZStack(alignment: .topTrailing) {
-                                        Image(uiImage: capturedImages[index])
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 80, height: 80)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        
-                                        Button {
-                                            capturedImages.remove(at: index)
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.red)
-                                                .background(Color.white, in: Circle())
-                                        }
-                                        .offset(x: 5, y: -5)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 4)
+                    PhotoGalleryView(
+                        images: capturedImages,
+                        onDelete: { index in
+                            capturedImages.remove(at: index)
                         }
-                    }
+                    )
                     
-                    HStack {
-                        QuickCameraButton(
-                            onPhotoTaken: { image in
-                                capturedImages.append(image)
-                            },
-                            cameraMode: .item,
-                            title: "Take Photo"
-                        )
-                        
-                        Button("Choose from Library", systemImage: "photo") {
-                            showingImagePicker = true
+                    WorkingCameraButton(
+                        title: "Take Photos",
+                        allowMultiple: true,
+                        onPhotosCaptured: { images in
+                            capturedImages.append(contentsOf: images)
                         }
-                    }
+                    )
                 }
             }
             .navigationTitle("Add Item")
@@ -578,13 +501,6 @@ struct AddInventoryItemView: View {
                 }
             }
             .disabled(isSubmitting)
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            SafeImagePickerView(sourceType: .photoLibrary) { image in
-                if let image = image {
-                    capturedImages.append(image)
-                }
-            }
         }
     }
     
@@ -635,7 +551,6 @@ struct EditInventoryItemView: View {
     @State private var notes: String
     @State private var isComplete: Bool
     @State private var capturedImages: [UIImage] = []
-    @State private var showingImagePicker = false
     @State private var isSubmitting = false
     
     init(item: InventoryItem, roomId: UUID, inventoryService: InventoryService) {
@@ -688,55 +603,29 @@ struct EditInventoryItemView: View {
                 }
                 
                 Section("Photos") {
-                    if item.photos.isEmpty && capturedImages.isEmpty {
-                        Text("No photos added")
-                            .foregroundColor(.secondary)
-                    } else {
-                        if !item.photos.isEmpty {
-                            Text("\(item.photos.count) existing photo\(item.photos.count != 1 ? "s" : "")")
+                    if !item.photos.isEmpty {
+                        HStack {
+                            Label("\(item.photos.count) existing", systemImage: "photo.fill")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
-                        }
-                        
-                        if !capturedImages.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(0..<capturedImages.count, id: \.self) { index in
-                                        ZStack(alignment: .topTrailing) {
-                                            Image(uiImage: capturedImages[index])
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 80, height: 80)
-                                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                            
-                                            Button {
-                                                capturedImages.remove(at: index)
-                                            } label: {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.red)
-                                                    .background(Color.white, in: Circle())
-                                            }
-                                            .offset(x: 5, y: -5)
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal, 4)
-                            }
+                            Spacer()
                         }
                     }
                     
-                    HStack {
-                        QuickCameraButton(
-                            onPhotoTaken: { image in
-                                capturedImages.append(image)
-                            },
-                            cameraMode: .item,
-                            title: "Take Photo"
-                        )
-                        
-                        Button("Choose from Library", systemImage: "photo") {
-                            showingImagePicker = true
+                    PhotoGalleryView(
+                        images: capturedImages,
+                        onDelete: { index in
+                            capturedImages.remove(at: index)
                         }
-                    }
+                    )
+                    
+                    WorkingCameraButton(
+                        title: "Add Photos",
+                        allowMultiple: true,
+                        onPhotosCaptured: { images in
+                            capturedImages.append(contentsOf: images)
+                        }
+                    )
                 }
             }
             .navigationTitle("Edit Item")
@@ -758,13 +647,6 @@ struct EditInventoryItemView: View {
                 }
             }
             .disabled(isSubmitting)
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            SafeImagePickerView(sourceType: .photoLibrary) { image in
-                if let image = image {
-                    capturedImages.append(image)
-                }
-            }
         }
     }
     
@@ -884,6 +766,7 @@ struct SafeImagePickerView: UIViewControllerRepresentable {
         }
     }
 }
+
 
 #Preview {
     let sampleRoom = Room(name: "Living Room", type: .livingRoom)

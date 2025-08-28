@@ -147,20 +147,15 @@ export default function Dashboard() {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '18px'
-              }}>
-                I
-              </div>
+              <img 
+                src="/inventry-icon.png"
+                alt="Inventry"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '12px'
+                }}
+              />
               <h1 style={{
                 fontSize: '32px',
                 fontWeight: 'bold',
@@ -178,21 +173,41 @@ export default function Dashboard() {
               Manage all properties and clients across your organization
             </p>
           </div>
-          <a href="/add-client" style={{
-            display: 'inline-block',
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-            color: 'white',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            fontWeight: '600',
-            fontSize: '16px',
-            textDecoration: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          <div style={{
+            display: 'flex',
+            gap: '16px'
           }}>
-            + Add Client
-          </a>
+            <a href="/users" style={{
+              display: 'inline-block',
+              background: 'linear-gradient(135deg, #059669, #047857)',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              fontWeight: '600',
+              fontSize: '16px',
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}>
+              👥 Manage Users
+            </a>
+            <a href="/add-client" style={{
+              display: 'inline-block',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              fontWeight: '600',
+              fontSize: '16px',
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}>
+              + Add Client
+            </a>
+          </div>
         </div>
       </div>
 

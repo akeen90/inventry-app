@@ -26,9 +26,11 @@
 		C8A1B3212C9A1251 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3182C9A1251 /* FirebaseCore */; };
 		C8A1B3222C9A1252 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3172C9A1252 /* FirebaseFirestore */; };
 		C8A1B3232C9A1253 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3162C9A1253 /* FirebaseStorage */; };
+		EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B429F830CA996D72E60A53 /* WorkingCamera.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		57B429F830CA996D72E60A53 /* WorkingCamera.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkingCamera.swift; path = Views/WorkingCamera.swift; sourceTree = "<group>"; };
 		AB4188B12E5FB315008004E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		AB4188B22E5FB315008004E6 /* MainAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAppView.swift; sourceTree = "<group>"; };
 		C8A1B2E52C9A1234 /* Inventry.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Inventry.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -90,6 +92,7 @@
 				C8A1B3002C9A1234 /* Views */,
 				C8A1B3012C9A1234 /* Models */,
 				C8A1B3022C9A1234 /* Services */,
+				57B429F830CA996D72E60A53 /* WorkingCamera.swift */,
 			);
 			path = Inventry;
 			sourceTree = "<group>";
@@ -241,6 +244,7 @@
 				C8A1B3122C9A1243 /* InventoryService.swift in Sources */,
 				C8A1B3132C9A1244 /* RoomDetailView.swift in Sources */,
 				C8A1B2E92C9A1234 /* InventryApp.swift in Sources */,
+				EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

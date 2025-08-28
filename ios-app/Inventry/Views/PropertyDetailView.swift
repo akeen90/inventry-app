@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import UIKit
 
+
 struct PropertyDetailView: View {
     let property: Property
     @StateObject private var inventoryService = InventoryService()
@@ -918,78 +919,41 @@ struct RoomTypeSelectionCard: View {
     }
 }
 
-// MARK: - Property Photo Components
-struct PropertyPhotoView: View {
-    @Binding var propertyImage: UIImage?
-    let propertyName: String
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            if let image = propertyImage {
-                // Show existing property photo
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-            } else {
-                // Placeholder for property photo
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(height: 200)
-                    .overlay(
-                        VStack(spacing: 12) {
-                            Image(systemName: "house.circle")
-                                .font(.system(size: 40))
-                                .foregroundColor(.gray)
-                            
-                            Text("Add Property Photo")
-                                .font(.headline)
-                                .foregroundColor(.gray)
-                            
-                            Text("Take a photo of the property exterior")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                        }
-                    )
-            }
-            
-            // Camera button - optimized for iPhone 16 Pro
-            iPhone16ProPhotoCaptureButton(title: propertyImage == nil ? "Take Property Photo" : "Update Property Photo") { image in
-                propertyImage = image
-            }
-        }
-        .padding()
-    }
-}
+
 
 struct PropertyPhotoSection: View {
-    @State private var propertyImage: UIImage?
+    @State private var propertyImages: [UIImage] = []
     @State private var showingCamera = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Property Photo")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
+            HStack {
+                Text("Property Photos")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if !propertyImages.isEmpty {
+                    Text("\(propertyImages.count) photo\(propertyImages.count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemGray5))
+                        .cornerRadius(8)
+                }
+            }
             
-            if let image = propertyImage {
-                // Show captured property photo
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 200)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+            if !propertyImages.isEmpty {
+                // Show captured property photos in a modern grid
+                PhotoGalleryView(
+                    images: propertyImages,
+                    onDelete: { index in
+                        propertyImages.remove(at: index)
+                    }
+                )
             } else {
                 // Placeholder for property photo
                 RoundedRectangle(cornerRadius: 12)
@@ -1001,11 +965,11 @@ struct PropertyPhotoSection: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(.gray)
                             
-                            Text("Add Property Photo")
+                            Text("Add Property Photos")
                                 .font(.headline)
                                 .foregroundColor(.gray)
                             
-                            Text("Take a photo of the property exterior")
+                            Text("Take photos of the property exterior")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
@@ -1013,28 +977,15 @@ struct PropertyPhotoSection: View {
                     )
             }
             
-            // Camera button using our custom camera
-            Button(action: {
-                checkCameraPermissionAndOpen()
-            }) {
-                HStack {
-                    Image(systemName: "camera.fill")
-                        .font(.title2)
-                    Text(propertyImage == nil ? "Take Property Photo" : "Update Property Photo")
-                        .font(.headline)
+            // Working Camera Button
+            WorkingCameraButton(
+                title: propertyImages.isEmpty ? "Take Property Photos" : "Add More Photos",
+                allowMultiple: true,
+                onPhotosCaptured: { images in
+                    propertyImages.append(contentsOf: images)
+                    print("✅ \(images.count) property photo(s) captured successfully")
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.blue)
-                .cornerRadius(12)
-            }
-            .fullScreenCover(isPresented: $showingCamera) {
-                SimpleWorkingCameraView { image in
-                    propertyImage = image
-                    print("✅ Property photo captured successfully")
-                }
-            }
+            )
         }
         .padding()
         .background(
@@ -1043,240 +994,9 @@ struct PropertyPhotoSection: View {
                 .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
         )
     }
-    
-    private func checkCameraPermissionAndOpen() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            print("📷 Camera authorized - opening custom camera")
-            showingCamera = true
-        case .notDetermined:
-            print("📷 Requesting camera permission")
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        print("✅ Camera permission granted")
-                        showingCamera = true
-                    } else {
-                        print("❌ Camera permission denied")
-                    }
-                }
-            }
-        case .denied, .restricted:
-            print("❌ Camera access denied or restricted")
-        @unknown default:
-            print("❌ Unknown camera permission status")
-        }
-    }
 }
 
-struct iPhone16ProPhotoCaptureButton: View {
-    let title: String
-    let onPhotoTaken: (UIImage) -> Void
-    @State private var showingCamera = false
-    @State private var showingPermissionAlert = false
-    
-    var body: some View {
-        Button(action: {
-            checkCameraPermission()
-        }) {
-            HStack {
-                Image(systemName: "camera.fill")
-                    .font(.title2)
-                Text(title)
-                    .font(.headline)
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(Color.blue)
-            .cornerRadius(12)
-        }
-        .fullScreenCover(isPresented: $showingCamera) {
-            SimpleWorkingCameraView(onPhotoTaken: onPhotoTaken)
-        }
-        .alert("Camera Permission Required", isPresented: $showingPermissionAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Settings") {
-                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(settingsURL)
-                }
-            }
-        } message: {
-            Text("Please enable camera access in Settings to take photos.")
-        }
-    }
-    
-    private func checkCameraPermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            showingCamera = true
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        showingCamera = true
-                    } else {
-                        showingPermissionAlert = true
-                    }
-                }
-            }
-        case .denied, .restricted:
-            showingPermissionAlert = true
-        @unknown default:
-            showingPermissionAlert = true
-        }
-    }
-}
 
-// MARK: - Simple Working Camera View (iPhone 16 Pro Optimized)
-struct SimpleWorkingCameraView: UIViewControllerRepresentable {
-    let onPhotoTaken: (UIImage) -> Void
-    @Environment(\.dismiss) private var dismiss
-    
-    func makeUIViewController(context: Context) -> SimpleCameraController {
-        let controller = SimpleCameraController()
-        controller.onPhotoTaken = onPhotoTaken
-        controller.onDismiss = { dismiss() }
-        return controller
-    }
-    
-    func updateUIViewController(_ uiViewController: SimpleCameraController, context: Context) {}
-}
-
-class SimpleCameraController: UIViewController {
-    var onPhotoTaken: ((UIImage) -> Void)?
-    var onDismiss: (() -> Void)?
-    
-    private var captureSession: AVCaptureSession!
-    private var videoPreviewLayer: AVCaptureVideoPreviewLayer!
-    private var photoOutput: AVCapturePhotoOutput!
-    private var currentCamera: AVCaptureDevice!
-    private var currentCameraInput: AVCaptureDeviceInput!
-    
-    private var shutterButton: UIButton!
-    private var cancelButton: UIButton!
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .black
-        setupCameraAndUI()
-    }
-    
-    private func setupCameraAndUI() {
-        // Setup capture session
-        captureSession = AVCaptureSession()
-        captureSession.sessionPreset = .photo
-        
-        // Find camera device
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-            print("No camera found")
-            onDismiss?()
-            return
-        }
-        
-        currentCamera = camera
-        
-        do {
-            currentCameraInput = try AVCaptureDeviceInput(device: camera)
-            
-            if captureSession.canAddInput(currentCameraInput) {
-                captureSession.addInput(currentCameraInput)
-            }
-            
-            photoOutput = AVCapturePhotoOutput()
-            if captureSession.canAddOutput(photoOutput) {
-                captureSession.addOutput(photoOutput)
-            }
-            
-            // Setup preview
-            videoPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-            videoPreviewLayer.videoGravity = .resizeAspectFill
-            videoPreviewLayer.frame = view.bounds
-            view.layer.addSublayer(videoPreviewLayer)
-            
-            // Setup UI
-            setupUI()
-            
-            // Start camera
-            DispatchQueue.global(qos: .background).async {
-                self.captureSession.startRunning()
-            }
-            
-        } catch {
-            print("Camera setup error: \(error)")
-            onDismiss?()
-        }
-    }
-    
-    private func setupUI() {
-        // Shutter button
-        shutterButton = UIButton()
-        shutterButton.frame = CGRect(x: 0, y: 0, width: 80, height: 80)
-        shutterButton.center = CGPoint(x: view.center.x, y: view.frame.height - 100)
-        shutterButton.backgroundColor = .white
-        shutterButton.layer.cornerRadius = 40
-        shutterButton.layer.borderWidth = 5
-        shutterButton.layer.borderColor = UIColor.systemBlue.cgColor
-        shutterButton.addTarget(self, action: #selector(shutterTapped), for: .touchUpInside)
-        view.addSubview(shutterButton)
-        
-        // Cancel button
-        cancelButton = UIButton()
-        cancelButton.frame = CGRect(x: 20, y: 50, width: 80, height: 40)
-        cancelButton.setTitle("Cancel", for: .normal)
-        cancelButton.setTitleColor(.white, for: .normal)
-        cancelButton.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        cancelButton.layer.cornerRadius = 8
-        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        view.addSubview(cancelButton)
-    }
-    
-    @objc private func shutterTapped() {
-        let settings = AVCapturePhotoSettings()
-        settings.flashMode = .auto
-        photoOutput.capturePhoto(with: settings, delegate: self)
-        
-        // Visual feedback
-        shutterButton.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-        UIView.animate(withDuration: 0.1) {
-            self.shutterButton.transform = CGAffineTransform.identity
-        }
-    }
-    
-    @objc private func cancelTapped() {
-        onDismiss?()
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        videoPreviewLayer?.frame = view.bounds
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        captureSession?.stopRunning()
-    }
-}
-
-extension SimpleCameraController: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        if let error = error {
-            print("Photo error: \(error)")
-            return
-        }
-        
-        guard let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData) else {
-            print("Could not create image")
-            return
-        }
-        
-        DispatchQueue.main.async {
-            self.onPhotoTaken?(image)
-            self.onDismiss?()
-        }
-    }
-}
 
 #Preview {
     let landlord = Landlord(name: "Smith Property Ltd", email: "contact@smithproperties.co.uk")
