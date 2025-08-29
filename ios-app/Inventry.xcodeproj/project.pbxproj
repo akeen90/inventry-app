@@ -8,9 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		2E076BF980594EDF82F6EEFE /* PDFGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */; };
+		2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08BC41183DA34F51912D1FFC /* CoreDataStack.swift */; };
 		41570C0C76364AAAB699776F /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */; };
 		AB4188B32E5FB315008004E6 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B12E5FB315008004E6 /* LoginView.swift */; };
 		AB4188B42E5FB315008004E6 /* MainAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B22E5FB315008004E6 /* MainAppView.swift */; };
+		AB62D31B2E61A55A00408277 /* DeletedItemsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB62D31A2E61A55A00408277 /* DeletedItemsService.swift */; };
+		AB62D31D2E61A56C00408277 /* DeletedItemsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB62D31C2E61A56C00408277 /* DeletedItemsView.swift */; };
 		C8A1B2E92C9A1234 /* InventryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A1B2E82C9A1234 /* InventryApp.swift */; };
 		C8A1B2EB2C9A1234 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A1B2EA2C9A1234 /* ContentView.swift */; };
 		C8A1B2ED2C9A1234 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C8A1B2EC2C9A1234 /* Assets.xcassets */; };
@@ -29,18 +32,17 @@
 		C8A1B3222C9A1252 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3172C9A1252 /* FirebaseFirestore */; };
 		C8A1B3232C9A1253 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3162C9A1253 /* FirebaseStorage */; };
 		EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B429F830CA996D72E60A53 /* WorkingCamera.swift */; };
-
-		2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08BC41183DA34F51912D1FFC /* CoreDataStack.swift */; };
-
-
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		08BC41183DA34F51912D1FFC /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
 		57B429F830CA996D72E60A53 /* WorkingCamera.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkingCamera.swift; path = Views/WorkingCamera.swift; sourceTree = "<group>"; };
 		77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFGenerationService.swift; sourceTree = "<group>"; };
 		A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
 		AB4188B12E5FB315008004E6 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		AB4188B22E5FB315008004E6 /* MainAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAppView.swift; sourceTree = "<group>"; };
+		AB62D31A2E61A55A00408277 /* DeletedItemsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeletedItemsService.swift; sourceTree = "<group>"; };
+		AB62D31C2E61A56C00408277 /* DeletedItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeletedItemsView.swift; sourceTree = "<group>"; };
 		C8A1B2E52C9A1234 /* Inventry.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Inventry.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8A1B2E82C9A1234 /* InventryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventryApp.swift; sourceTree = "<group>"; };
 		C8A1B2EA2C9A1234 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -56,10 +58,6 @@
 		C8A1B3112C9A1243 /* InventoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryService.swift; sourceTree = "<group>"; };
 		C8A1B3122C9A1244 /* RoomDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomDetailView.swift; sourceTree = "<group>"; };
 		C8A1B4012C9A1301 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-
-		08BC41183DA34F51912D1FFC /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
-
-
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +118,7 @@
 		C8A1B3002C9A1234 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AB62D31C2E61A56C00408277 /* DeletedItemsView.swift */,
 				AB4188B12E5FB315008004E6 /* LoginView.swift */,
 				AB4188B22E5FB315008004E6 /* MainAppView.swift */,
 				C8A1B3052C9A1237 /* PropertyListView.swift */,
@@ -142,15 +141,13 @@
 		C8A1B3022C9A1234 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				AB62D31A2E61A55A00408277 /* DeletedItemsService.swift */,
 				C8A1B3042C9A1236 /* PropertyService.swift */,
 				C8A1B3082C9A1240 /* FirebaseService.swift */,
 				C8A1B3112C9A1243 /* InventoryService.swift */,
 				A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */,
 				77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */,
 				08BC41183DA34F51912D1FFC /* CoreDataStack.swift */,
-
-
-
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -259,6 +256,7 @@
 			files = (
 				C8A1B2EB2C9A1234 /* ContentView.swift in Sources */,
 				C8A1B3042C9A1235 /* Property.swift in Sources */,
+				AB62D31B2E61A55A00408277 /* DeletedItemsService.swift in Sources */,
 				C8A1B3052C9A1236 /* PropertyService.swift in Sources */,
 				AB4188B32E5FB315008004E6 /* LoginView.swift in Sources */,
 				AB4188B42E5FB315008004E6 /* MainAppView.swift in Sources */,
@@ -269,14 +267,12 @@
 				C8A1B3112C9A1242 /* PropertyDetailView.swift in Sources */,
 				C8A1B3122C9A1243 /* InventoryService.swift in Sources */,
 				C8A1B3132C9A1244 /* RoomDetailView.swift in Sources */,
+				AB62D31D2E61A56C00408277 /* DeletedItemsView.swift in Sources */,
 				C8A1B2E92C9A1234 /* InventryApp.swift in Sources */,
 				EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */,
 				41570C0C76364AAAB699776F /* AuthenticationService.swift in Sources */,
 				2E076BF980594EDF82F6EEFE /* PDFGenerationService.swift in Sources */,
 				2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */,
-
-
-
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

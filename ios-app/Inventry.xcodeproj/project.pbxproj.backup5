@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2E076BF980594EDF82F6EEFE /* PDFGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */; };
+		2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08BC41183DA34F51912D1FFC /* CoreDataStack.swift */; };
 		41570C0C76364AAAB699776F /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */; };
 		AB4188B32E5FB315008004E6 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B12E5FB315008004E6 /* LoginView.swift */; };
 		AB4188B42E5FB315008004E6 /* MainAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4188B22E5FB315008004E6 /* MainAppView.swift */; };
@@ -29,9 +30,19 @@
 		C8A1B3222C9A1252 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3172C9A1252 /* FirebaseFirestore */; };
 		C8A1B3232C9A1253 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3162C9A1253 /* FirebaseStorage */; };
 		EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B429F830CA996D72E60A53 /* WorkingCamera.swift */; };
+
+		0BFF02FAAEB74B5186D9254F /* PropertyEntity+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702DBF1E0E1141E9B2F66542 /* PropertyEntity+CoreDataClass.swift */; };
+		2C309FC0D67A4A3880DD6542 /* PropertyEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71805D5B11094676AC8BD0AD /* PropertyEntity+CoreDataProperties.swift */; };
+		DD7F1E29762E495DBC8E4421 /* InventoryReportEntity+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85832C15D59246589237A8A5 /* InventoryReportEntity+CoreDataClass.swift */; };
+		6B1A4FC1EA854BE1919D3D66 /* InventoryReportEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA5A1A0FFEDD4ACABB945EC6 /* InventoryReportEntity+CoreDataProperties.swift */; };
+		28B0CA4F0E6E4060AD3ABE8A /* RoomEntity+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA90275ACC2843028FA50F50 /* RoomEntity+CoreDataClass.swift */; };
+		6E6775608EF741C199516842 /* RoomEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B641D07F64345498559D904 /* RoomEntity+CoreDataProperties.swift */; };
+		EB5072E90A254DBC8B4B565D /* InventoryItemEntity+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0195769E2BD4AE39161D88D /* InventoryItemEntity+CoreDataClass.swift */; };
+		87EC2B8A74CF473A9ACE10CA /* InventoryItemEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDC66E51E38438CB29B1DAE /* InventoryItemEntity+CoreDataProperties.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		08BC41183DA34F51912D1FFC /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
 		57B429F830CA996D72E60A53 /* WorkingCamera.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WorkingCamera.swift; path = Views/WorkingCamera.swift; sourceTree = "<group>"; };
 		77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFGenerationService.swift; sourceTree = "<group>"; };
 		A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
@@ -52,6 +63,17 @@
 		C8A1B3112C9A1243 /* InventoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryService.swift; sourceTree = "<group>"; };
 		C8A1B3122C9A1244 /* RoomDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomDetailView.swift; sourceTree = "<group>"; };
 		C8A1B4012C9A1301 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+
+		0A05F8D03A214FD1910B1E8F /* InventoryModel.xcdatamodeld */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = InventoryModel.xcdatamodeld; sourceTree = "<group>"; };
+
+		702DBF1E0E1141E9B2F66542 /* PropertyEntity+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyEntity+CoreDataClass.swift; sourceTree = "<group>"; };
+		71805D5B11094676AC8BD0AD /* PropertyEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyEntity+CoreDataProperties.swift; sourceTree = "<group>"; };
+		85832C15D59246589237A8A5 /* InventoryReportEntity+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryReportEntity+CoreDataClass.swift; sourceTree = "<group>"; };
+		DA5A1A0FFEDD4ACABB945EC6 /* InventoryReportEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryReportEntity+CoreDataProperties.swift; sourceTree = "<group>"; };
+		DA90275ACC2843028FA50F50 /* RoomEntity+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomEntity+CoreDataClass.swift; sourceTree = "<group>"; };
+		9B641D07F64345498559D904 /* RoomEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomEntity+CoreDataProperties.swift; sourceTree = "<group>"; };
+		E0195769E2BD4AE39161D88D /* InventoryItemEntity+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryItemEntity+CoreDataClass.swift; sourceTree = "<group>"; };
+		2FDC66E51E38438CB29B1DAE /* InventoryItemEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryItemEntity+CoreDataProperties.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +91,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AB67841C2E6111A1004E4AD8 /* New Group */ = {
+		AB67841D2E61193E004E4AD8 /* New Group */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -79,7 +101,7 @@
 		C8A1B2DC2C9A1234 = {
 			isa = PBXGroup;
 			children = (
-				AB67841C2E6111A1004E4AD8 /* New Group */,
+				AB67841D2E61193E004E4AD8 /* New Group */,
 				C8A1B2E72C9A1234 /* Inventry */,
 				C8A1B2E62C9A1234 /* Products */,
 			);
@@ -139,6 +161,7 @@
 				C8A1B3112C9A1243 /* InventoryService.swift */,
 				A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */,
 				77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */,
+				08BC41183DA34F51912D1FFC /* CoreDataStack.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -261,6 +284,16 @@
 				EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */,
 				41570C0C76364AAAB699776F /* AuthenticationService.swift in Sources */,
 				2E076BF980594EDF82F6EEFE /* PDFGenerationService.swift in Sources */,
+				2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */,
+				0BFF02FAAEB74B5186D9254F /* PropertyEntity+CoreDataClass.swift in Sources */,
+				2C309FC0D67A4A3880DD6542 /* PropertyEntity+CoreDataProperties.swift in Sources */,
+				DD7F1E29762E495DBC8E4421 /* InventoryReportEntity+CoreDataClass.swift in Sources */,
+				6B1A4FC1EA854BE1919D3D66 /* InventoryReportEntity+CoreDataProperties.swift in Sources */,
+				28B0CA4F0E6E4060AD3ABE8A /* RoomEntity+CoreDataClass.swift in Sources */,
+				6E6775608EF741C199516842 /* RoomEntity+CoreDataProperties.swift in Sources */,
+				EB5072E90A254DBC8B4B565D /* InventoryItemEntity+CoreDataClass.swift in Sources */,
+				87EC2B8A74CF473A9ACE10CA /* InventoryItemEntity+CoreDataProperties.swift in Sources */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -242,13 +242,21 @@ struct RoomDetailView: View {
     }
     
     private func deleteItem(_ item: InventoryItem) async {
-        print("🗑️ Deleting item: \(item.name)")
+        print("🗑️ Moving item to deleted folder: \(item.name)")
+        
+        // Move to deleted folder
+        let deletedService = DeletedItemsService.shared
+        let propertyId = UUID() // TODO: Pass actual property ID from parent
+        let propertyName = "Current Property" // TODO: Pass actual property name from parent
+        deletedService.deleteInventoryItem(item, roomName: room.name, propertyId: propertyId, propertyName: propertyName)
+        
+        // Remove from inventory service
         await inventoryService.deleteItemFromRoom(item, roomId: room.id)
         
         if let error = inventoryService.errorMessage {
             print("❌ Failed to delete item: \(error)")
         } else {
-            print("✅ Item deleted successfully")
+            print("✅ Item moved to deleted folder successfully")
             // Trigger UI refresh
             inventoryService.objectWillChange.send()
         }

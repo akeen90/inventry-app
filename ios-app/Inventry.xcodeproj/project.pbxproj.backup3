@@ -29,6 +29,10 @@
 		C8A1B3222C9A1252 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3172C9A1252 /* FirebaseFirestore */; };
 		C8A1B3232C9A1253 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C8A1B3162C9A1253 /* FirebaseStorage */; };
 		EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B429F830CA996D72E60A53 /* WorkingCamera.swift */; };
+
+		2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08BC41183DA34F51912D1FFC /* CoreDataStack.swift */; };
+		984B9B75FD7C46B5AC4479CA /* LocalStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB901A43C27C497CB4AD3A60 /* LocalStorageService.swift */; };
+		ABCD15188C944350BC0F2F4E /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38AAFACE8DF04841A168BD2D /* SyncService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +56,10 @@
 		C8A1B3112C9A1243 /* InventoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryService.swift; sourceTree = "<group>"; };
 		C8A1B3122C9A1244 /* RoomDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomDetailView.swift; sourceTree = "<group>"; };
 		C8A1B4012C9A1301 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+
+		08BC41183DA34F51912D1FFC /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
+		EB901A43C27C497CB4AD3A60 /* LocalStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStorageService.swift; sourceTree = "<group>"; };
+		38AAFACE8DF04841A168BD2D /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +147,10 @@
 				C8A1B3112C9A1243 /* InventoryService.swift */,
 				A045BBC16FBD4A0AB8184DFB /* AuthenticationService.swift */,
 				77EEA40BC3E7473B8E153A7C /* PDFGenerationService.swift */,
+				08BC41183DA34F51912D1FFC /* CoreDataStack.swift */,
+				EB901A43C27C497CB4AD3A60 /* LocalStorageService.swift */,
+				38AAFACE8DF04841A168BD2D /* SyncService.swift */,
+
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -261,6 +273,10 @@
 				EAEB297EFFA575D89F93A892 /* WorkingCamera.swift in Sources */,
 				41570C0C76364AAAB699776F /* AuthenticationService.swift in Sources */,
 				2E076BF980594EDF82F6EEFE /* PDFGenerationService.swift in Sources */,
+				2F1854E48C0F41BFA717CEBD /* CoreDataStack.swift in Sources */,
+				984B9B75FD7C46B5AC4479CA /* LocalStorageService.swift in Sources */,
+				ABCD15188C944350BC0F2F4E /* SyncService.swift in Sources */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

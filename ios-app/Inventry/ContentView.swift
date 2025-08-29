@@ -67,7 +67,9 @@ struct ReportsView: View {
 struct SettingsView: View {
     @StateObject private var firebaseService = FirebaseService.shared
     @StateObject private var authService = AuthenticationService.shared
+    @StateObject private var deletedService = DeletedItemsService.shared
     // @StateObject private var syncService = SyncService.shared // TODO: Re-enable when entity files added
+    @State private var showingDeletedItems = false
     
     var body: some View {
         NavigationView {
@@ -151,12 +153,42 @@ struct SettingsView: View {
                     #endif
                 }
                 
+                Section("Data Management") {
+                    Button(action: {
+                        showingDeletedItems = true
+                    }) {
+                        HStack {
+                            Label("Deleted Items", systemImage: "trash")
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            if !deletedService.deletedItems.isEmpty {
+                                Text("\(deletedService.deletedItems.count)")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
+                            }
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
                 Section("Support") {
                     Label("Help & Support", systemImage: "questionmark.circle")
                     Label("Send Feedback", systemImage: "envelope")
                 }
             }
             .navigationTitle("Settings")
+        }
+        .sheet(isPresented: $showingDeletedItems) {
+            DeletedItemsView()
         }
     }
     
