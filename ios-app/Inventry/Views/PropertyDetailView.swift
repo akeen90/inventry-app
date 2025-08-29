@@ -553,7 +553,13 @@ struct ModernRoomsListView: View {
             }
             
             if rooms.isEmpty {
-                ModernEmptyRoomsView()
+                ModernEmptyRoomsView { roomName, roomType in
+                    // Create the room directly with the selected name and type
+                    Task {
+                        let room = Room(name: roomName, type: roomType)
+                        await inventoryService.addRoom(room)
+                    }
+                }
             } else {
                 LazyVStack(spacing: 12) {
                     ForEach(rooms) { room in
@@ -710,6 +716,12 @@ struct ModernRoomCard: View {
 }
 
 struct ModernEmptyRoomsView: View {
+    let onRoomSelect: ((String, RoomType) -> Void)?
+    
+    init(onRoomSelect: ((String, RoomType) -> Void)? = nil) {
+        self.onRoomSelect = onRoomSelect
+    }
+    
     var body: some View {
         VStack(spacing: 24) {
             // Icon with gradient background
@@ -748,13 +760,28 @@ struct ModernEmptyRoomsView: View {
                     .foregroundColor(.secondary)
                 
                 HStack(spacing: 8) {
-                    ForEach(["Living Room", "Kitchen", "Bedroom"], id: \.self) { room in
-                        Text(room)
-                            .font(.caption)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
+                    ForEach([("Living Room", RoomType.livingRoom), ("Kitchen", RoomType.kitchen), ("Bedroom", RoomType.bedroom)], id: \.0) { roomName, roomType in
+                        if let onRoomSelect = onRoomSelect {
+                            Button(action: {
+                                onRoomSelect(roomName, roomType)
+                            }) {
+                                Text(roomName)
+                                    .font(.caption)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color(.systemGray6))
+                                    .foregroundColor(.primary)
+                                    .cornerRadius(12)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        } else {
+                            Text(roomName)
+                                .font(.caption)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                        }
                     }
                     
                     Spacer()
@@ -780,6 +807,10 @@ struct ModernAddRoomView: View {
     @State private var roomName = ""
     @State private var selectedType = RoomType.livingRoom
     @State private var isSubmitting = false
+    
+    private var isSaveEnabled: Bool {
+        !isSubmitting && !roomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     
     var roomTypeColor: Color {
         switch selectedType {
@@ -892,8 +923,8 @@ struct ModernAddRoomView: View {
                             await addRoom()
                         }
                     }
-                    .disabled(isSubmitting || roomName.isEmpty)
-                    .foregroundColor(roomName.isEmpty ? .secondary : roomTypeColor)
+                    .disabled(!isSaveEnabled)
+                    .foregroundColor(isSaveEnabled ? roomTypeColor : .secondary)
                     .fontWeight(.semibold)
                 }
             }
