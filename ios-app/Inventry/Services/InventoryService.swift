@@ -9,6 +9,33 @@ class InventoryService: ObservableObject {
     // Store reports per property to maintain persistence
     private var reportCache: [UUID: InventoryReport] = [:]
     
+    // Reference to PropertyService for syncing changes back to properties
+    private var propertyService: PropertyService?
+    
+    func setPropertyService(_ service: PropertyService) {
+        self.propertyService = service
+    }
+    
+    // CRITICAL: Sync inventory changes back to PropertyService
+    private func syncToPropertyService() {
+        guard let propertyService = propertyService,
+              let report = currentReport else { return }
+        
+        // Find the property and update its inventory report
+        if let propertyIndex = propertyService.properties.firstIndex(where: { $0.id == report.propertyId }) {
+            var updatedProperty = propertyService.properties[propertyIndex]
+            updatedProperty.inventoryReport = report
+            updatedProperty.updatedAt = Date()
+            
+            // Update in PropertyService
+            Task {
+                await propertyService.updateProperty(updatedProperty)
+            }
+            
+            print("🔄 Synced inventory changes back to PropertyService for property: \(report.propertyId)")
+        }
+    }
+    
     func loadInventoryReport(for propertyId: UUID, type: InventoryType) {
         isLoading = true
         errorMessage = nil
@@ -106,6 +133,9 @@ class InventoryService: ObservableObject {
             self.currentReport = report
             self.reportCache[report.propertyId] = report
             
+            // Sync changes back to PropertyService
+            self.syncToPropertyService()
+            
         } catch {
             errorMessage = "Failed to add room: \(error.localizedDescription)"
         }
@@ -165,6 +195,9 @@ class InventoryService: ObservableObject {
             // Update both current report and cache
             self.currentReport = report
             self.reportCache[report.propertyId] = report
+            
+            // Sync changes back to PropertyService
+            self.syncToPropertyService()
             
         } catch {
             errorMessage = "Failed to delete room: \(error.localizedDescription)"
@@ -320,6 +353,9 @@ class InventoryService: ObservableObject {
             // Update both current report and cache
             self.currentReport = report
             self.reportCache[report.propertyId] = report
+            
+            // Sync changes back to PropertyService
+            self.syncToPropertyService()
             
         } catch {
             errorMessage = "Failed to save signature: \(error.localizedDescription)"

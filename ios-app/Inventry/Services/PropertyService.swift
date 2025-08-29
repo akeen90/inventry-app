@@ -9,6 +9,40 @@ class PropertyService: ObservableObject {
     private let firebaseService = FirebaseService.shared
     // private let localStorageService = LocalStorageService.shared // TODO: Re-enable when Core Data files are added to project
     
+    // CRITICAL: JSON-based persistence as immediate fix
+    private var documentsDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+    }
+    
+    private var propertiesFileURL: URL {
+        documentsDirectory.appendingPathComponent("properties.json")
+    }
+    
+    // CRITICAL: Save properties to JSON file
+    private func savePropertiesToDisk() {
+        do {
+            let data = try JSONEncoder().encode(properties)
+            try data.write(to: propertiesFileURL)
+            print("✅ Properties saved to disk: \(properties.count) properties")
+        } catch {
+            print("❌ Failed to save properties to disk: \(error)")
+            errorMessage = "Failed to save data: \(error.localizedDescription)"
+        }
+    }
+    
+    // CRITICAL: Load properties from JSON file
+    private func loadPropertiesFromDisk() -> [Property] {
+        do {
+            let data = try Data(contentsOf: propertiesFileURL)
+            let savedProperties = try JSONDecoder().decode([Property].self, from: data)
+            print("✅ Properties loaded from disk: \(savedProperties.count) properties")
+            return savedProperties
+        } catch {
+            print("💾 No saved properties found (will use mock data): \(error)")
+            return []
+        }
+    }
+    
     // Helper enum for inventory progress levels
     private enum InventoryProgressLevel {
         case low, medium, high
@@ -291,15 +325,25 @@ class PropertyService: ObservableObject {
             
             let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
-            // Load initial data only if we have no properties
-            // TODO: Replace with real Firebase fetch + local storage integration
-            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-            let loadedProperties = getMockProperties(for: currentUserEmail)
+            // CRITICAL: Load from disk first, fallback to mock data
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
             
-            // Only set properties if we don't have any yet
-            if properties.isEmpty && !loadedProperties.isEmpty {
-                properties = loadedProperties
-                print("🏠 Initial load: \(properties.count) properties for user: \(currentUserEmail)")
+            // Try to load saved properties from disk
+            let savedProperties = loadPropertiesFromDisk()
+            
+            if !savedProperties.isEmpty {
+                // Use saved properties
+                properties = savedProperties
+                print("🏠 Loaded SAVED properties: \(properties.count) properties for user: \(currentUserEmail)")
+            } else {
+                // Fallback to mock data for first time users
+                let mockProperties = getMockProperties(for: currentUserEmail)
+                if !mockProperties.isEmpty {
+                    properties = mockProperties
+                    // Save mock data as initial data
+                    savePropertiesToDisk()
+                    print("🏠 Loaded MOCK properties and saved to disk: \(properties.count) properties for user: \(currentUserEmail)")
+                }
             }
             
         } catch {
@@ -315,9 +359,14 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase create + local storage
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
+            
+            // Add to memory
             properties.append(property)
+            
+            // CRITICAL: Save to disk immediately
+            savePropertiesToDisk()
+            print("💾 Property added and saved to disk: \(property.name)")
         } catch {
             errorMessage = "Failed to add property: \(error.localizedDescription)"
         }
@@ -330,10 +379,17 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
-            // TODO: Replace with Firebase update + local storage
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
+            
+            // Update in memory
             if let index = properties.firstIndex(where: { $0.id == property.id }) {
                 properties[index] = property
+                
+                // CRITICAL: Save to disk immediately
+                savePropertiesToDisk()
+                print("💾 Property updated and saved to disk: \(property.name)")
+            } else {
+                errorMessage = "Property not found for update"
             }
         } catch {
             errorMessage = "Failed to update property: \(error.localizedDescription)"

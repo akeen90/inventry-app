@@ -30,7 +30,7 @@ struct PropertyListView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(filteredProperties) { property in
-                                NavigationLink(destination: PropertyDetailView(property: property)) {
+                                NavigationLink(destination: PropertyDetailView(property: property, propertyService: propertyService)) {
                                     ModernPropertyRowView(property: property)
                                 }
                                 .buttonStyle(PlainButtonStyle())

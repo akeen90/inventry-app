@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 
 struct PropertyDetailView: View {
     let property: Property
+    let propertyService: PropertyService
     @StateObject private var inventoryService = InventoryService()
     @State private var showingAddRoom = false
     @State private var showingShareSheet = false
@@ -77,6 +78,8 @@ struct PropertyDetailView: View {
             Text(alertMessage)
         }
         .onAppear {
+            // CRITICAL: Inject PropertyService reference for data sync
+            inventoryService.setPropertyService(propertyService)
             inventoryService.loadInventoryReport(for: property.id, type: property.inventoryType)
         }
         .onDisappear {
@@ -1103,7 +1106,7 @@ struct PropertyPhotoSection: View {
         inventoryType: .checkIn
     )
     
-    return PropertyDetailView(property: property)
+    PropertyDetailView(property: property, propertyService: PropertyService())
 }
 
 // MARK: - ShareSheet
