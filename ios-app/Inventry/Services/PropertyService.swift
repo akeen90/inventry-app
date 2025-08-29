@@ -30,15 +30,15 @@ class PropertyService: ObservableObject {
         }
     }
     
-    // CRITICAL: Load properties from JSON file
+    // CRITICAL: Load properties from JSON file - NO FALLBACKS
     private func loadPropertiesFromDisk() -> [Property] {
         do {
             let data = try Data(contentsOf: propertiesFileURL)
             let savedProperties = try JSONDecoder().decode([Property].self, from: data)
-            print("✅ Properties loaded from disk: \(savedProperties.count) properties")
+            print("✅ Properties loaded from persistent storage: \(savedProperties.count) properties")
             return savedProperties
         } catch {
-            print("💾 No saved properties found (will use mock data): \(error)")
+            print("💾 No saved properties file found - starting with empty storage")
             return []
         }
     }
@@ -299,7 +299,8 @@ class PropertyService: ObservableObject {
     }
     
     init() {
-        loadMockData()
+        // Start with empty properties - will load from persistent storage when needed
+        properties = []
     }
     
     func loadProperties() async {
@@ -325,25 +326,17 @@ class PropertyService: ObservableObject {
             
             let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
-            // CRITICAL: Load from disk first, fallback to mock data
+            // CRITICAL: ONLY load from disk - NO mock data fallback
             try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
             
-            // Try to load saved properties from disk
+            // Load saved properties from disk
             let savedProperties = loadPropertiesFromDisk()
+            properties = savedProperties
             
-            if !savedProperties.isEmpty {
-                // Use saved properties
-                properties = savedProperties
-                print("🏠 Loaded SAVED properties: \(properties.count) properties for user: \(currentUserEmail)")
-            } else {
-                // Fallback to mock data for first time users
-                let mockProperties = getMockProperties(for: currentUserEmail)
-                if !mockProperties.isEmpty {
-                    properties = mockProperties
-                    // Save mock data as initial data
-                    savePropertiesToDisk()
-                    print("🏠 Loaded MOCK properties and saved to disk: \(properties.count) properties for user: \(currentUserEmail)")
-                }
+            print("💾 Loaded properties from persistent storage: \(properties.count) properties for user: \(currentUserEmail)")
+            
+            if properties.isEmpty {
+                print("📝 No saved properties found - user will start with empty list")
             }
             
         } catch {
@@ -413,10 +406,6 @@ class PropertyService: ObservableObject {
         isLoading = false
     }
     
-    private func loadMockData() {
-        // Load empty initially - will be populated when user signs in
-        properties = []
-    }
     
     // MARK: - Inspection Workflow
     

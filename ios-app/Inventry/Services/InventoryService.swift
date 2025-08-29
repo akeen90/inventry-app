@@ -54,55 +54,31 @@ class InventoryService: ObservableObject {
             return
         }
         
-        // For now, create a new report or load from mock data
+        // Check PropertyService for existing inventory report data
         Task {
             do {
-                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+                try await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
                 
-                // Create new report if none exists
-                var report = InventoryReport(propertyId: propertyId, inventoryType: type)
+                // Try to get existing inventory report from PropertyService
+                var report: InventoryReport
                 
-                // Add some sample rooms for demonstration
-                var sampleRooms: [Room] = []
-                
-                // Living Room with sample items
-                var livingRoom = Room(name: "Living Room", type: .livingRoom)
-                livingRoom.items = [
-                    InventoryItem(name: "3-Seater Sofa", category: .furniture, condition: .good),
-                    InventoryItem(name: "Coffee Table", category: .furniture, condition: .fair),
-                    InventoryItem(name: "TV Stand", category: .furniture, condition: .good),
-                    InventoryItem(name: "Carpet", category: .flooring, condition: .good)
-                ]
-                sampleRooms.append(livingRoom)
-                
-                // Kitchen with sample items
-                var kitchen = Room(name: "Kitchen", type: .kitchen)
-                kitchen.items = [
-                    InventoryItem(name: "Refrigerator", category: .appliances, condition: .good),
-                    InventoryItem(name: "Oven", category: .appliances, condition: .excellent),
-                    InventoryItem(name: "Kitchen Cabinets", category: .fixtures, condition: .good),
-                    InventoryItem(name: "Worktop", category: .fixtures, condition: .fair)
-                ]
-                sampleRooms.append(kitchen)
-                
-                // Bedroom with sample items
-                var bedroom = Room(name: "Master Bedroom", type: .bedroom)
-                bedroom.items = [
-                    InventoryItem(name: "Double Bed Frame", category: .furniture, condition: .good),
-                    InventoryItem(name: "Wardrobe", category: .furniture, condition: .excellent),
-                    InventoryItem(name: "Carpet", category: .flooring, condition: .good),
-                    InventoryItem(name: "Curtains", category: .fixtures, condition: .fair)
-                ]
-                sampleRooms.append(bedroom)
-                
-                // Update report with sample rooms
-                report.rooms = sampleRooms
+                if let propertyService = propertyService,
+                   let property = propertyService.properties.first(where: { $0.id == propertyId }),
+                   let existingReport = property.inventoryReport {
+                    // Use existing inventory report from persistent storage
+                    report = existingReport
+                    print("📋 Using existing inventory report from persistent storage with \(report.rooms.count) rooms")
+                } else {
+                    // Create new empty report - NO SAMPLE DATA
+                    report = InventoryReport(propertyId: propertyId, inventoryType: type)
+                    print("📋 Created new empty inventory report - user will add rooms manually")
+                }
                 
                 // Cache the report for persistence
                 self.reportCache[propertyId] = report
                 self.currentReport = report
                 
-                print("📋 Created and cached new report for property \(propertyId) with \(report.rooms.count) rooms")
+                print("📋 Report loaded and cached for property \(propertyId) with \(report.rooms.count) rooms")
                 
             } catch {
                 errorMessage = "Failed to load inventory: \(error.localizedDescription)"
