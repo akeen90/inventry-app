@@ -273,35 +273,33 @@ class PropertyService: ObservableObject {
         errorMessage = nil
         
         do {
+            // NEVER CLEAR PROPERTIES - they should persist across all states
+            
+            // If we already have properties, keep them and skip reload
+            if !properties.isEmpty {
+                print("🏠 Properties already exist (\(properties.count)) - maintaining persistence")
+                isLoading = false
+                return
+            }
+            
             // Get current user from Firebase
             guard let currentUser = firebaseService.currentUser else {
-                // CRITICAL FIX: Don't clear properties if user is temporarily nil
-                // This prevents data loss during navigation or auth state fluctuations
-                print("⚠️ User temporarily nil - keeping existing properties (\(properties.count))")
+                print("⚠️ User not available - maintaining empty state until authentication")
                 isLoading = false
                 return
             }
             
             let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
-            // Check if we already have properties for this user to avoid unnecessary reloads
-            if !properties.isEmpty {
-                print("🏠 Properties already loaded for user: \(currentUserEmail) - skipping reload")
-                isLoading = false
-                return
-            }
-            
-            // For now, use mock data filtered by user
+            // Load initial data only if we have no properties
             // TODO: Replace with real Firebase fetch + local storage integration
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
             let loadedProperties = getMockProperties(for: currentUserEmail)
             
-            // Only update if we actually got data
-            if !loadedProperties.isEmpty {
+            // Only set properties if we don't have any yet
+            if properties.isEmpty && !loadedProperties.isEmpty {
                 properties = loadedProperties
-                print("🏠 Loaded \(properties.count) properties for user: \(currentUserEmail)")
-            } else {
-                print("⚠️ No properties found for user: \(currentUserEmail)")
+                print("🏠 Initial load: \(properties.count) properties for user: \(currentUserEmail)")
             }
             
         } catch {
@@ -424,16 +422,37 @@ class PropertyService: ObservableObject {
     
     // MARK: - Data Management
     
-    func clearProperties() {
-        properties = []
-        print("🧹 Properties cleared (user signed out)")
-    }
-    
-    func forceReloadProperties() async {
-        // Clear existing properties and force a fresh load
-        properties = []
-        await loadProperties()
-        print("🔄 Properties force reloaded")
+    func refreshProperties() async {
+        // Refresh properties without clearing existing ones
+        // This maintains data integrity while updating from server
+        isLoading = true
+        
+        do {
+            guard let currentUser = firebaseService.currentUser else {
+                print("⚠️ User not available - cannot refresh properties")
+                isLoading = false
+                return
+            }
+            
+            let currentUserEmail = currentUser.email ?? "unknown@example.com"
+            
+            // TODO: Replace with real Firebase fetch + merge with local changes
+            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
+            let freshProperties = getMockProperties(for: currentUserEmail)
+            
+            // Merge fresh data with existing properties (preserve local changes)
+            // For now, just update if we got fresh data
+            if !freshProperties.isEmpty {
+                properties = freshProperties
+                print("🔄 Properties refreshed: \(properties.count) properties")
+            }
+            
+        } catch {
+            errorMessage = "Failed to refresh properties: \(error.localizedDescription)"
+            print("❌ Property refresh error: \(error.localizedDescription)")
+        }
+        
+        isLoading = false
     }
     
     // MARK: - Report Generation

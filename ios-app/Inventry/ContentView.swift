@@ -68,7 +68,6 @@ struct SettingsView: View {
     @StateObject private var firebaseService = FirebaseService.shared
     @StateObject private var authService = AuthenticationService.shared
     @StateObject private var deletedService = DeletedItemsService.shared
-    @StateObject private var propertyService = PropertyService()
     // @StateObject private var syncService = SyncService.shared // TODO: Re-enable when entity files added
     @State private var showingDeletedItems = false
     
@@ -227,9 +226,9 @@ struct SettingsView: View {
     private func signOut() {
         do {
             try authService.signOut()
-            // Clear properties when user signs out to prevent showing wrong user's data
-            propertyService.clearProperties()
-            print("✅ User signed out successfully")
+            // Properties remain persistent even after sign out
+            // The user can access their data when they sign back in
+            print("✅ User signed out successfully - properties maintained")
         } catch {
             print("❌ Failed to sign out: \(error)")
         }

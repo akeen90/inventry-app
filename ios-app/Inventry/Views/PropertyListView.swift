@@ -50,7 +50,7 @@ struct PropertyListView: View {
             )
             .searchable(text: $searchText, prompt: "Search properties...")
             .refreshable {
-                await propertyService.loadProperties()
+                await propertyService.refreshProperties()
             }
             .navigationTitle("Portfolio")
             .navigationBarTitleDisplayMode(.large)
