@@ -275,22 +275,38 @@ class PropertyService: ObservableObject {
         do {
             // Get current user from Firebase
             guard let currentUser = firebaseService.currentUser else {
-                properties = []
+                // CRITICAL FIX: Don't clear properties if user is temporarily nil
+                // This prevents data loss during navigation or auth state fluctuations
+                print("⚠️ User temporarily nil - keeping existing properties (\(properties.count))")
                 isLoading = false
                 return
             }
             
             let currentUserEmail = currentUser.email ?? "unknown@example.com"
             
+            // Check if we already have properties for this user to avoid unnecessary reloads
+            if !properties.isEmpty {
+                print("🏠 Properties already loaded for user: \(currentUserEmail) - skipping reload")
+                isLoading = false
+                return
+            }
+            
             // For now, use mock data filtered by user
             // TODO: Replace with real Firebase fetch + local storage integration
             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
-            properties = getMockProperties(for: currentUserEmail)
+            let loadedProperties = getMockProperties(for: currentUserEmail)
             
-            print("🏠 Loaded \(properties.count) properties for user: \(currentUserEmail)")
+            // Only update if we actually got data
+            if !loadedProperties.isEmpty {
+                properties = loadedProperties
+                print("🏠 Loaded \(properties.count) properties for user: \(currentUserEmail)")
+            } else {
+                print("⚠️ No properties found for user: \(currentUserEmail)")
+            }
             
         } catch {
             errorMessage = "Failed to load properties: \(error.localizedDescription)"
+            print("❌ Property loading error: \(error.localizedDescription)")
         }
         
         isLoading = false
@@ -404,6 +420,20 @@ class PropertyService: ObservableObject {
         }
         
         return defaultRooms
+    }
+    
+    // MARK: - Data Management
+    
+    func clearProperties() {
+        properties = []
+        print("🧹 Properties cleared (user signed out)")
+    }
+    
+    func forceReloadProperties() async {
+        // Clear existing properties and force a fresh load
+        properties = []
+        await loadProperties()
+        print("🔄 Properties force reloaded")
     }
     
     // MARK: - Report Generation

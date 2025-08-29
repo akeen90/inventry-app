@@ -83,12 +83,8 @@ struct PropertyListView: View {
                     await propertyService.loadProperties()
                 }
             }
-            .onChange(of: firebaseService.currentUser) { newUser in
-                // Reload properties when user changes
-                Task {
-                    await propertyService.loadProperties()
-                }
-            }
+            // REMOVED: Problematic onChange that was causing properties to disappear
+            // The .onAppear loading is sufficient for property management
         }
     }
 }
