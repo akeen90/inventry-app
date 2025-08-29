@@ -162,6 +162,11 @@ struct RoomDetailView: View {
                         items: room.items,
                         onItemTap: { item in
                             selectedItem = item
+                        },
+                        onItemDelete: { item in
+                            Task {
+                                await deleteItem(item)
+                            }
                         }
                     )
                     
@@ -233,6 +238,19 @@ struct RoomDetailView: View {
             print("❌ Failed to save room: \(error)")
         } else {
             print("✅ Room changes saved successfully")
+        }
+    }
+    
+    private func deleteItem(_ item: InventoryItem) async {
+        print("🗑️ Deleting item: \(item.name)")
+        await inventoryService.deleteItemFromRoom(item, roomId: room.id)
+        
+        if let error = inventoryService.errorMessage {
+            print("❌ Failed to delete item: \(error)")
+        } else {
+            print("✅ Item deleted successfully")
+            // Trigger UI refresh
+            inventoryService.objectWillChange.send()
         }
     }
 }
@@ -335,6 +353,9 @@ struct RoomHeaderView: View {
 struct ItemsListView: View {
     let items: [InventoryItem]
     let onItemTap: (InventoryItem) -> Void
+    let onItemDelete: (InventoryItem) -> Void
+    @State private var itemToDelete: InventoryItem?
+    @State private var showingDeleteConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -350,8 +371,32 @@ struct ItemsListView: View {
                             .onTapGesture {
                                 onItemTap(item)
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    itemToDelete = item
+                                    showingDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .tint(.red)
+                            }
                     }
                 }
+            }
+        }
+        .alert("Delete Item", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {
+                itemToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                if let item = itemToDelete {
+                    onItemDelete(item)
+                    itemToDelete = nil
+                }
+            }
+        } message: {
+            if let item = itemToDelete {
+                Text("Are you sure you want to delete '\(item.name)'? This action cannot be undone.")
             }
         }
     }
