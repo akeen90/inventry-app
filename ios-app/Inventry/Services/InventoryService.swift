@@ -171,6 +171,12 @@ class InventoryService: ObservableObject {
                 report.rooms[roomIndex].updatedAt = Date()
                 report.updatedAt = Date()
                 self.currentReport = report
+                
+                print("✅ Item '\(item.name)' added to room. Room now has \(report.rooms[roomIndex].items.count) items")
+                print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
+                
+                // Trigger UI update
+                self.objectWillChange.send()
             } else {
                 errorMessage = "Room not found"
             }
@@ -198,10 +204,17 @@ class InventoryService: ObservableObject {
             // Find the room and update the item
             if let roomIndex = report.rooms.firstIndex(where: { $0.id == roomId }) {
                 if let itemIndex = report.rooms[roomIndex].items.firstIndex(where: { $0.id == item.id }) {
+                    let oldIsComplete = report.rooms[roomIndex].items[itemIndex].isComplete
                     report.rooms[roomIndex].items[itemIndex] = item
                     report.rooms[roomIndex].updatedAt = Date()
                     report.updatedAt = Date()
                     self.currentReport = report
+                    
+                    print("✅ Item '\(item.name)' updated. Complete status changed: \(oldIsComplete) → \(item.isComplete)")
+                    print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
+                    
+                    // Trigger UI update
+                    self.objectWillChange.send()
                 } else {
                     errorMessage = "Item not found in room"
                 }

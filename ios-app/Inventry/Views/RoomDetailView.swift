@@ -174,7 +174,10 @@ struct RoomDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {
-                        dismiss()
+                        Task {
+                            await saveRoomChanges()
+                            dismiss()
+                        }
                     }
                 }
                 
@@ -190,6 +193,7 @@ struct RoomDetailView: View {
                     inventoryService: inventoryService,
                     onSaveComplete: {
                         showingAddItem = false
+                        print("🔄 Item saved - triggering UI refresh")
                         // Force UI update
                         inventoryService.objectWillChange.send()
                     }
@@ -202,6 +206,7 @@ struct RoomDetailView: View {
                     inventoryService: inventoryService,
                     onSaveComplete: {
                         selectedItem = nil
+                        print("🔄 Item updated - triggering UI refresh")
                         // Force UI update
                         inventoryService.objectWillChange.send()
                     }
@@ -211,6 +216,23 @@ struct RoomDetailView: View {
         .onAppear {
             print("📍 RoomDetailView appeared for room: \(room.name)")
             print("📍 Room has \(room.items.count) items")
+        }
+        .onDisappear {
+            print("📍 RoomDetailView disappearing - auto-saving changes")
+            Task {
+                await saveRoomChanges()
+            }
+        }
+    }
+    
+    private func saveRoomChanges() async {
+        print("💾 Auto-saving room changes for: \(room.name)")
+        await inventoryService.updateRoom(room)
+        
+        if let error = inventoryService.errorMessage {
+            print("❌ Failed to save room: \(error)")
+        } else {
+            print("✅ Room changes saved successfully")
         }
     }
 }
