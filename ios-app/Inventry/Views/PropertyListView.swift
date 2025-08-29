@@ -172,8 +172,22 @@ struct ModernPropertyRowView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
-                // Property Icon
+                // Property Icon with Completion Ring
                 ZStack {
+                    // Completion Ring Background
+                    if property.hasInventoryData {
+                        Circle()
+                            .stroke(statusColor.opacity(0.3), lineWidth: 3)
+                            .frame(width: 68, height: 68)
+                        
+                        // Completion Progress Ring
+                        Circle()
+                            .trim(from: 0, to: CGFloat(property.inventoryProgress) / 100.0)
+                            .stroke(statusColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .frame(width: 68, height: 68)
+                            .rotationEffect(.degrees(-90))
+                    }
+                    
                     RoundedRectangle(cornerRadius: 12)
                         .fill(LinearGradient(colors: [statusColor, statusColor.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 60, height: 60)
@@ -181,6 +195,27 @@ struct ModernPropertyRowView: View {
                     Image(systemName: propertyIcon)
                         .font(.title2)
                         .foregroundColor(.white)
+                    
+                    // Completion Badge for 100% complete
+                    if property.inventoryProgress == 100 {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    Circle()
+                                        .fill(.green)
+                                        .frame(width: 20, height: 20)
+                                    
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                                .offset(x: 8, y: 8)
+                            }
+                        }
+                        .frame(width: 60, height: 60)
+                    }
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
@@ -252,12 +287,26 @@ struct ModernPropertyRowView: View {
     }
     
     private var statusColor: Color {
-        switch property.status {
-        case .draft: return .gray
-        case .inProgress: return .orange
-        case .completed: return .green
-        case .approved: return .blue
-        case .archived: return .purple
+        // Use completion status if inventory data is available
+        if property.hasInventoryData {
+            let progress = property.inventoryProgress
+            switch progress {
+            case 0..<25: return .red.opacity(0.8)      // Very low progress
+            case 25..<50: return .orange               // Low progress  
+            case 50..<75: return .yellow               // Medium progress
+            case 75..<100: return .blue                // High progress
+            case 100: return .green                    // Complete
+            default: return .gray
+            }
+        } else {
+            // Fall back to property status colors
+            switch property.status {
+            case .draft: return .gray
+            case .inProgress: return .orange
+            case .completed: return .green
+            case .approved: return .blue
+            case .archived: return .purple
+            }
         }
     }
     

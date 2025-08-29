@@ -555,15 +555,23 @@ struct ItemRowView: View {
     
     var body: some View {
         HStack {
-            // Completion Status - Now Clickable!
+            // Completion Status - Greyed out tick that lights up when complete
             Button(action: {
                 var updatedItem = item
                 updatedItem.isComplete.toggle()
                 onToggleComplete?(updatedItem)
             }) {
-                Image(systemName: item.isComplete ? "checkmark.circle.fill" : "circle")
+                Image(systemName: "checkmark")
                     .font(.title3)
-                    .foregroundColor(item.isComplete ? .green : .gray)
+                    .fontWeight(.semibold)
+                    .foregroundColor(item.isComplete ? .green : .gray.opacity(0.4))
+                    .background(
+                        Circle()
+                            .fill(item.isComplete ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
+                            .frame(width: 28, height: 28)
+                    )
+                    .scaleEffect(item.isComplete ? 1.1 : 1.0)
+                    .animation(.easeInOut(duration: 0.2), value: item.isComplete)
             }
             .buttonStyle(PlainButtonStyle())
             

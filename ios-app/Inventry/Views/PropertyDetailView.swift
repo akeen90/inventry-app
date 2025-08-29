@@ -43,6 +43,11 @@ struct PropertyDetailView: View {
                     QuickActionsView(
                         onAddRoom: { showingAddRoom = true },
                         onGenerateReport: { generatePDFReport() },
+                        onCompleteProperty: { 
+                            Task {
+                                await completeProperty()
+                            }
+                        },
                         canComplete: inventoryService.currentReport?.isComplete == true
                     )
                     
@@ -129,6 +134,30 @@ struct PropertyDetailView: View {
         // In the future, this will integrate with PropertyService to update property status
         // For now, the InventoryService handles all the data persistence
         print("✅ Property progress saved successfully")
+    }
+    
+    private func completeProperty() async {
+        print("✅ Completing entire property: \(property.name)")
+        
+        guard let report = inventoryService.currentReport else {
+            showAlert(title: "Error", message: "No active inventory report found")
+            return
+        }
+        
+        // Mark all items in all rooms as complete
+        for room in report.rooms {
+            for item in room.items {
+                var updatedItem = item
+                updatedItem.isComplete = true
+                updatedItem.updatedAt = Date()
+                
+                // Update each item individually to ensure proper sync
+                await inventoryService.updateItemInRoom(updatedItem, roomId: room.id)
+            }
+        }
+        
+        print("✅ Property marked as complete with \(report.totalItems) items across \(report.rooms.count) rooms")
+        showAlert(title: "Property Complete", message: "All items in \(property.name) have been marked as complete!")
     }
 }
 
@@ -436,6 +465,7 @@ struct ProgressStatCard: View {
 struct QuickActionsView: View {
     let onAddRoom: () -> Void
     let onGenerateReport: () -> Void
+    let onCompleteProperty: () -> Void
     let canComplete: Bool
     
     var body: some View {
@@ -468,7 +498,7 @@ struct QuickActionsView: View {
                         subtitle: "Finalize inventory",
                         icon: "checkmark.seal",
                         color: .green,
-                        action: { /* Complete action */ }
+                        action: onCompleteProperty
                     )
                 }
             }
