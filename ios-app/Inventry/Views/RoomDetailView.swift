@@ -167,6 +167,11 @@ struct RoomDetailView: View {
                             Task {
                                 await deleteItem(item)
                             }
+                        },
+                        onToggleComplete: { item in
+                            Task {
+                                await inventoryService.updateItemInRoom(item, roomId: room.id)
+                            }
                         }
                     )
                     
@@ -186,7 +191,14 @@ struct RoomDetailView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button("Complete Room", systemImage: "checkmark.circle") {
+                        Task {
+                            await markRoomComplete()
+                        }
+                    }
+                    .disabled(room.items.isEmpty)
+                    
                     Button("Add Item", systemImage: "plus") {
                         showingAddItem = true
                     }
@@ -238,6 +250,32 @@ struct RoomDetailView: View {
             print("❌ Failed to save room: \(error)")
         } else {
             print("✅ Room changes saved successfully")
+        }
+    }
+    
+    private func markRoomComplete() async {
+        print("✅ Marking room as complete: \(room.name)")
+        
+        guard let report = inventoryService.currentReport else {
+            print("❌ No active inventory report")
+            return
+        }
+        
+        // Find the room and mark all items as complete
+        if let roomIndex = report.rooms.firstIndex(where: { $0.id == room.id }) {
+            for item in report.rooms[roomIndex].items {
+                var updatedItem = item
+                updatedItem.isComplete = true
+                updatedItem.updatedAt = Date()
+                
+                // Use the existing updateItemInRoom method to properly sync changes
+                await inventoryService.updateItemInRoom(updatedItem, roomId: room.id)
+            }
+            
+            print("✅ Room marked as complete with \(report.rooms[roomIndex].items.count) items")
+            
+            // Trigger UI refresh
+            inventoryService.objectWillChange.send()
         }
     }
     
@@ -362,6 +400,7 @@ struct ItemsListView: View {
     let items: [InventoryItem]
     let onItemTap: (InventoryItem) -> Void
     let onItemDelete: (InventoryItem) -> Void
+    let onToggleComplete: (InventoryItem) -> Void
     @State private var itemToDelete: InventoryItem?
     @State private var showingDeleteConfirmation = false
     
@@ -375,7 +414,7 @@ struct ItemsListView: View {
             } else {
                 LazyVStack(spacing: 8) {
                     ForEach(items) { item in
-                        ItemRowView(item: item)
+                        ItemRowView(item: item, onToggleComplete: onToggleComplete)
                             .onTapGesture {
                                 onItemTap(item)
                             }
@@ -507,13 +546,26 @@ struct PhotoReferenceThumbnailView: View {
 
 struct ItemRowView: View {
     let item: InventoryItem
+    let onToggleComplete: ((InventoryItem) -> Void)?
+    
+    init(item: InventoryItem, onToggleComplete: ((InventoryItem) -> Void)? = nil) {
+        self.item = item
+        self.onToggleComplete = onToggleComplete
+    }
     
     var body: some View {
         HStack {
-            // Completion Status
-            Image(systemName: item.isComplete ? "checkmark.circle.fill" : "circle")
-                .font(.title3)
-                .foregroundColor(item.isComplete ? .green : .gray)
+            // Completion Status - Now Clickable!
+            Button(action: {
+                var updatedItem = item
+                updatedItem.isComplete.toggle()
+                onToggleComplete?(updatedItem)
+            }) {
+                Image(systemName: item.isComplete ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundColor(item.isComplete ? .green : .gray)
+            }
+            .buttonStyle(PlainButtonStyle())
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {

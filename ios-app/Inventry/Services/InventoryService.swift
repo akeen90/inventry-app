@@ -27,7 +27,10 @@ class InventoryService: ObservableObject {
             updatedProperty.inventoryReport = report
             updatedProperty.updatedAt = Date()
             
-            // Update in PropertyService
+            // CRITICAL: Update synchronously in memory and then trigger async save
+            propertyService.properties[propertyIndex] = updatedProperty
+            
+            // Trigger async save to disk in background
             Task {
                 await propertyService.updateProperty(updatedProperty)
             }
@@ -205,6 +208,9 @@ class InventoryService: ObservableObject {
                 self.currentReport = report
                 self.reportCache[report.propertyId] = report
                 
+                // Sync changes back to PropertyService
+                self.syncToPropertyService()
+                
                 print("✅ Item '\(item.name)' added to room. Room now has \(report.rooms[roomIndex].items.count) items")
                 print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
                 
@@ -245,6 +251,9 @@ class InventoryService: ObservableObject {
                     // Update both current report and cache
                     self.currentReport = report
                     self.reportCache[report.propertyId] = report
+                    
+                    // Sync changes back to PropertyService
+                    self.syncToPropertyService()
                     
                     print("✅ Item '\(item.name)' updated. Complete status changed: \(oldIsComplete) → \(item.isComplete)")
                     print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
@@ -287,6 +296,9 @@ class InventoryService: ObservableObject {
                 // Update both current report and cache
                 self.currentReport = report
                 self.reportCache[report.propertyId] = report
+                
+                // Sync changes back to PropertyService
+                self.syncToPropertyService()
             } else {
                 errorMessage = "Room not found"
             }
