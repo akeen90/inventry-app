@@ -482,13 +482,12 @@ struct AddPropertyView: View {
                             icon: "building.2"
                         )
                         
-                        // Address
-                        ModernTextFieldView(
+                        // Address with Autocomplete
+                        AddressAutocompleteView(
                             title: "Property Address",
-                            text: $address,
-                            placeholder: "Full address including postcode",
-                            icon: "location",
-                            isMultiline: true
+                            address: $address,
+                            placeholder: "Start typing to find address...",
+                            icon: "location"
                         )
                         
                         // Property Type
