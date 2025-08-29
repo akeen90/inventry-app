@@ -7,6 +7,7 @@ class PropertyService: ObservableObject {
     @Published var errorMessage: String?
     
     private let firebaseService = FirebaseService.shared
+    private let authService = AuthenticationService.shared
     // private let localStorageService = LocalStorageService.shared // TODO: Re-enable when Core Data files are added to project
     
     // CRITICAL: JSON-based persistence as immediate fix
@@ -14,8 +15,10 @@ class PropertyService: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     }
     
+    // User-specific properties file
     private var propertiesFileURL: URL {
-        documentsDirectory.appendingPathComponent("properties.json")
+        let userId = authService.userID ?? "anonymous"
+        return documentsDirectory.appendingPathComponent("properties_\(userId).json")
     }
     
     // CRITICAL: Save properties to JSON file
@@ -354,12 +357,20 @@ class PropertyService: ObservableObject {
         do {
             try await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
             
+            // Ensure property has correct userId
+            var propertyWithUserId = property
+            propertyWithUserId.userId = authService.userID ?? "anonymous"
+            
             // Add to memory
-            properties.append(property)
+            properties.append(propertyWithUserId)
             
             // CRITICAL: Save to disk immediately
             savePropertiesToDisk()
-            print("💾 Property added and saved to disk: \(property.name)")
+            
+            // Sync with dashboard if user is authenticated
+            await syncPropertyToDashboard(propertyWithUserId)
+            
+            print("💾 Property added and saved to disk: \(propertyWithUserId.name)")
         } catch {
             errorMessage = "Failed to add property: \(error.localizedDescription)"
         }
@@ -380,6 +391,10 @@ class PropertyService: ObservableObject {
                 
                 // CRITICAL: Save to disk immediately
                 savePropertiesToDisk()
+                
+                // Sync updated property to dashboard
+                await syncPropertyToDashboard(property)
+                
                 print("💾 Property updated and saved to disk: \(property.name)")
             } else {
                 errorMessage = "Property not found for update"
@@ -512,6 +527,61 @@ class PropertyService: ObservableObject {
         var report = InventoryReport(propertyId: property.id, inventoryType: property.inventoryType)
         report.rooms = rooms
         return report
+    }
+    
+    // MARK: - Dashboard Sync
+    
+    private func syncPropertyToDashboard(_ property: Property) async {
+        guard authService.isAuthenticated,
+              let userId = authService.userID else {
+            print("📤 Skip dashboard sync - user not authenticated")
+            return
+        }
+        
+        // Prepare property data for dashboard API
+        let dashboardProperty = [
+            "id": property.id.uuidString,
+            "userId": userId,
+            "name": property.name,
+            "address": property.address,
+            "type": property.type.rawValue,
+            "status": property.status.rawValue,
+            "inventoryType": property.inventoryType.rawValue,
+            "inventoryProgress": property.inventoryProgress,
+            "totalItems": property.totalInventoryItems,
+            "completedItems": property.completedInventoryItems,
+            "hasInventoryData": property.hasInventoryData,
+            "createdAt": ISO8601DateFormatter().string(from: property.createdAt),
+            "updatedAt": ISO8601DateFormatter().string(from: property.updatedAt),
+            "landlordName": property.landlord.name,
+            "landlordEmail": property.landlord.email
+        ] as [String: Any]
+        
+        do {
+            guard let url = URL(string: "https://us-central1-nutrasafe-705c7.cloudfunctions.net/api/properties") else {
+                print("❌ Invalid dashboard API URL")
+                return
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: dashboardProperty)
+            request.httpBody = jsonData
+            
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 || httpResponse.statusCode == 201 {
+                    print("✅ Property synced to dashboard: \(property.name)")
+                } else {
+                    print("⚠️ Dashboard sync partial success: \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            print("❌ Failed to sync property to dashboard: \(error)")
+        }
     }
 }
 

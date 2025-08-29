@@ -41,20 +41,40 @@ class PDFGenerationService {
             
             currentY += 20
             
-            // Rooms Summary
+            // Property Photo
+            if let propertyPhoto = property.propertyPhoto,
+               let image = propertyPhoto.loadImage() {
+                if currentY > pageRect.height - 200 {
+                    context.beginPage()
+                    currentY = 50
+                }
+                
+                currentY = drawSectionHeader("Property Photo", at: CGPoint(x: 50, y: currentY))
+                currentY += 20
+                
+                currentY = drawImage(image, at: CGPoint(x: 50, y: currentY), maxWidth: pageRect.width - 100, maxHeight: 150)
+                currentY += 30
+            }
+            
+            // Rooms Summary with Photos
             if let inventoryReport = property.inventoryReport, !inventoryReport.rooms.isEmpty {
-                currentY = drawSectionHeader("Rooms Summary", at: CGPoint(x: 50, y: currentY))
+                if currentY > pageRect.height - 100 {
+                    context.beginPage()
+                    currentY = 50
+                }
+                
+                currentY = drawSectionHeader("Rooms Inspection", at: CGPoint(x: 50, y: currentY))
                 currentY += 20
                 
                 for room in inventoryReport.rooms {
-                    currentY = drawRoomSummary(room: room, at: CGPoint(x: 50, y: currentY), pageWidth: pageRect.width - 100)
-                    currentY += 10
-                    
-                    // Check if we need a new page
-                    if currentY > pageRect.height - 100 {
+                    // Check if we need a new page for room content
+                    if currentY > pageRect.height - 300 {
                         context.beginPage()
                         currentY = 50
                     }
+                    
+                    currentY = drawDetailedRoomSummary(room: room, at: CGPoint(x: 50, y: currentY), pageWidth: pageRect.width - 100, context: context)
+                    currentY += 20
                 }
             }
             
@@ -176,6 +196,142 @@ class PDFGenerationService {
         currentY += 50
         
         return currentY
+    }
+    
+    private func drawDetailedRoomSummary(room: Room, at point: CGPoint, pageWidth: CGFloat, context: UIGraphicsPDFRendererContext) -> CGFloat {
+        let font = UIFont.systemFont(ofSize: 12)
+        let boldFont = UIFont.boldSystemFont(ofSize: 16)
+        let itemFont = UIFont.systemFont(ofSize: 10)
+        
+        var currentY = point.y
+        
+        // Room header with completion status
+        let completionStatus = room.items.isEmpty ? "No items" : "\(room.completedItemsCount)/\(room.itemCount) items complete (\(Int(room.completionPercentage))%)"
+        let roomHeader = "\(room.name) - \(room.type.displayName)"
+        
+        let headerAttributes: [NSAttributedString.Key: Any] = [
+            .font: boldFont,
+            .foregroundColor: UIColor.black
+        ]
+        
+        let statusAttributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: UIColor.systemBlue
+        ]
+        
+        let headerString = NSAttributedString(string: roomHeader, attributes: headerAttributes)
+        let headerRect = CGRect(x: point.x, y: currentY, width: pageWidth, height: 20)
+        headerString.draw(in: headerRect)
+        currentY += 25
+        
+        let statusString = NSAttributedString(string: completionStatus, attributes: statusAttributes)
+        let statusRect = CGRect(x: point.x + 20, y: currentY, width: pageWidth - 20, height: 15)
+        statusString.draw(in: statusRect)
+        currentY += 20
+        
+        // Room notes if any
+        if let notes = room.notes, !notes.isEmpty {
+            let notesAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: UIColor.darkGray
+            ]
+            
+            let notesString = NSAttributedString(string: "Notes: \(notes)", attributes: notesAttributes)
+            let notesRect = CGRect(x: point.x + 20, y: currentY, width: pageWidth - 20, height: 30)
+            notesString.draw(in: notesRect)
+            currentY += 35
+        }
+        
+        // Items list
+        if !room.items.isEmpty {
+            let itemsHeader = "Items:"
+            let itemsHeaderString = NSAttributedString(string: itemsHeader, attributes: headerAttributes)
+            let itemsHeaderRect = CGRect(x: point.x + 20, y: currentY, width: pageWidth - 20, height: 15)
+            itemsHeaderString.draw(in: itemsHeaderRect)
+            currentY += 20
+            
+            for item in room.items.prefix(5) { // Limit to first 5 items per room for space
+                let itemStatus = item.isComplete ? "✓" : "○"
+                let itemText = "\(itemStatus) \(item.name) - \(item.condition.displayName)"
+                
+                let itemAttributes: [NSAttributedString.Key: Any] = [
+                    .font: itemFont,
+                    .foregroundColor: item.isComplete ? UIColor.systemGreen : UIColor.darkGray
+                ]
+                
+                let itemString = NSAttributedString(string: itemText, attributes: itemAttributes)
+                let itemRect = CGRect(x: point.x + 40, y: currentY, width: pageWidth - 40, height: 12)
+                itemString.draw(in: itemRect)
+                currentY += 15
+                
+                // Add item photos if available (first photo only for space)
+                if let firstPhoto = item.photos.first,
+                   let image = firstPhoto.loadImage() {
+                    currentY = drawImage(image, at: CGPoint(x: point.x + 60, y: currentY), maxWidth: 100, maxHeight: 60)
+                    currentY += 10
+                }
+            }
+            
+            if room.items.count > 5 {
+                let moreItems = "... and \(room.items.count - 5) more items"
+                let moreAttributes: [NSAttributedString.Key: Any] = [
+                    .font: itemFont,
+                    .foregroundColor: UIColor.lightGray
+                ]
+                
+                let moreString = NSAttributedString(string: moreItems, attributes: moreAttributes)
+                let moreRect = CGRect(x: point.x + 40, y: currentY, width: pageWidth - 40, height: 12)
+                moreString.draw(in: moreRect)
+                currentY += 20
+            }
+        }
+        
+        // Add separator line
+        let separatorY = currentY + 10
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: point.x, y: separatorY))
+        path.addLine(to: CGPoint(x: point.x + pageWidth, y: separatorY))
+        path.lineWidth = 0.5
+        UIColor.lightGray.setStroke()
+        path.stroke()
+        
+        return separatorY + 15
+    }
+    
+    private func drawImage(_ image: UIImage, at point: CGPoint, maxWidth: CGFloat, maxHeight: CGFloat) -> CGFloat {
+        let imageSize = image.size
+        let aspectRatio = imageSize.width / imageSize.height
+        
+        var drawWidth: CGFloat
+        var drawHeight: CGFloat
+        
+        // Calculate dimensions maintaining aspect ratio
+        if aspectRatio > 1 { // Landscape
+            drawWidth = min(maxWidth, imageSize.width)
+            drawHeight = drawWidth / aspectRatio
+            if drawHeight > maxHeight {
+                drawHeight = maxHeight
+                drawWidth = drawHeight * aspectRatio
+            }
+        } else { // Portrait or square
+            drawHeight = min(maxHeight, imageSize.height)
+            drawWidth = drawHeight * aspectRatio
+            if drawWidth > maxWidth {
+                drawWidth = maxWidth
+                drawHeight = drawWidth / aspectRatio
+            }
+        }
+        
+        let drawRect = CGRect(x: point.x, y: point.y, width: drawWidth, height: drawHeight)
+        image.draw(in: drawRect)
+        
+        // Add border around image
+        let borderPath = UIBezierPath(rect: drawRect)
+        borderPath.lineWidth = 1.0
+        UIColor.lightGray.setStroke()
+        borderPath.stroke()
+        
+        return point.y + drawHeight + 10
     }
     
     private func drawFooter(at point: CGPoint, pageWidth: CGFloat) {

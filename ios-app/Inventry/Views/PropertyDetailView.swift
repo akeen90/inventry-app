@@ -32,7 +32,7 @@ struct PropertyDetailView: View {
                     ModernPropertyHeaderView(property: property)
                     
                     // Property Photo Section
-                    PropertyPhotoSection()
+                    PropertyPhotoSection(property: property, propertyService: propertyService)
                     
                     // Enhanced Inventory Progress
                     if let report = inventoryService.currentReport {
@@ -1081,8 +1081,12 @@ struct RoomTypeSelectionCard: View {
 
 
 struct PropertyPhotoSection: View {
+    let property: Property
+    let propertyService: PropertyService
+    
     @State private var propertyImages: [UIImage] = []
     @State private var showingCamera = false
+    @State private var isLoading = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1094,7 +1098,10 @@ struct PropertyPhotoSection: View {
                 
                 Spacer()
                 
-                if !propertyImages.isEmpty {
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else if !propertyImages.isEmpty {
                     Text("\(propertyImages.count) photo\(propertyImages.count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -1110,7 +1117,9 @@ struct PropertyPhotoSection: View {
                 PhotoGalleryView(
                     images: propertyImages,
                     onDelete: { index in
-                        propertyImages.remove(at: index)
+                        Task {
+                            await deletePropertyPhoto(at: index)
+                        }
                     }
                 )
             } else {
@@ -1141,8 +1150,9 @@ struct PropertyPhotoSection: View {
                 title: propertyImages.isEmpty ? "Take Property Photos" : "Add More Photos",
                 allowMultiple: true,
                 onPhotosCaptured: { images in
-                    propertyImages.append(contentsOf: images)
-                    print("✅ \(images.count) property photo(s) captured successfully")
+                    Task {
+                        await savePropertyPhotos(images)
+                    }
                 }
             )
         }
@@ -1152,6 +1162,78 @@ struct PropertyPhotoSection: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
         )
+        .onAppear {
+            loadExistingPhotos()
+        }
+    }
+    
+    private func loadExistingPhotos() {
+        // Load existing property photo if available
+        if let propertyPhoto = property.propertyPhoto,
+           let image = propertyPhoto.loadImage() {
+            propertyImages = [image]
+        }
+    }
+    
+    private func savePropertyPhotos(_ images: [UIImage]) async {
+        isLoading = true
+        
+        do {
+            var updatedProperty = property
+            
+            for image in images {
+                // Create PhotoReference and save image using PhotoStorageService
+                let photoReference = PhotoReference.create(from: image)
+                
+                // Set the first photo as the main property photo
+                if updatedProperty.propertyPhoto == nil {
+                    updatedProperty.propertyPhoto = photoReference
+                    print("✅ Set main property photo: \(photoReference.filename)")
+                }
+                
+                // Add image to local array for immediate UI update
+                propertyImages.append(image)
+                
+                print("✅ Property photo saved: \(photoReference.filename)")
+            }
+            
+            // Update property in service
+            await propertyService.updateProperty(updatedProperty)
+            
+            print("✅ \(images.count) property photo(s) saved and synced")
+        } catch {
+            print("❌ Failed to save property photos: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    private func deletePropertyPhoto(at index: Int) async {
+        guard index < propertyImages.count else { return }
+        
+        isLoading = true
+        
+        // Remove from local array
+        propertyImages.remove(at: index)
+        
+        // If we removed the main photo (index 0), update the property
+        if index == 0 {
+            var updatedProperty = property
+            
+            // If there are remaining images, set the next one as main photo
+            if !propertyImages.isEmpty, let firstImage = propertyImages.first {
+                let photoReference = PhotoReference.create(from: firstImage)
+                updatedProperty.propertyPhoto = photoReference
+            } else {
+                // No more photos, clear the main property photo
+                updatedProperty.propertyPhoto = nil
+            }
+            
+            // Update property in service
+            await propertyService.updateProperty(updatedProperty)
+        }
+        
+        isLoading = false
     }
 }
 

@@ -172,31 +172,46 @@ struct ModernPropertyRowView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
-                // Property Icon with Completion Ring
+                // Property Icon with Completion Indicator
                 ZStack {
-                    // Completion Ring Background
-                    if property.hasInventoryData {
-                        Circle()
-                            .stroke(statusColor.opacity(0.3), lineWidth: 3)
-                            .frame(width: 68, height: 68)
+                    // Show property photo if available, otherwise show icon with progress ring
+                    if let propertyPhoto = property.propertyPhoto,
+                       let image = propertyPhoto.loadImage() {
+                        // Property Photo
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(statusColor, lineWidth: 2)
+                            )
+                    } else {
+                        // Icon with subtle progress ring for incomplete properties
+                        if property.hasInventoryData && property.inventoryProgress < 100 {
+                            Circle()
+                                .stroke(statusColor.opacity(0.2), lineWidth: 2)
+                                .frame(width: 64, height: 64)
+                            
+                            // Completion Progress Ring - thinner and more subtle
+                            Circle()
+                                .trim(from: 0, to: CGFloat(property.inventoryProgress) / 100.0)
+                                .stroke(statusColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                .frame(width: 64, height: 64)
+                                .rotationEffect(.degrees(-90))
+                        }
                         
-                        // Completion Progress Ring
-                        Circle()
-                            .trim(from: 0, to: CGFloat(property.inventoryProgress) / 100.0)
-                            .stroke(statusColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .frame(width: 68, height: 68)
-                            .rotationEffect(.degrees(-90))
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(LinearGradient(colors: [statusColor, statusColor.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 60, height: 60)
+                        
+                        Image(systemName: propertyIcon)
+                            .font(.title2)
+                            .foregroundColor(.white)
                     }
                     
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(LinearGradient(colors: [statusColor, statusColor.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 60, height: 60)
-                    
-                    Image(systemName: propertyIcon)
-                        .font(.title2)
-                        .foregroundColor(.white)
-                    
-                    // Completion Badge for 100% complete
+                    // Completion Badge for 100% complete - works for both photo and icon
                     if property.inventoryProgress == 100 {
                         VStack {
                             Spacer()
@@ -205,13 +220,14 @@ struct ModernPropertyRowView: View {
                                 ZStack {
                                     Circle()
                                         .fill(.green)
-                                        .frame(width: 20, height: 20)
+                                        .frame(width: 18, height: 18)
+                                        .shadow(radius: 2)
                                     
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 10, weight: .bold))
+                                        .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(.white)
                                 }
-                                .offset(x: 8, y: 8)
+                                .offset(x: 6, y: 6)
                             }
                         }
                         .frame(width: 60, height: 60)
