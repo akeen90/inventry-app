@@ -1,5 +1,112 @@
 import Foundation
 import SwiftUI
+import UIKit
+
+// MARK: - Photo Storage Service (Temporary inline implementation)
+class PhotoStorageService {
+    static let shared = PhotoStorageService()
+    
+    private init() {
+        createPhotosDirectoryIfNeeded()
+    }
+    
+    private var photosDirectory: URL {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsDirectory.appendingPathComponent("InventryPhotos")
+    }
+    
+    private func createPhotosDirectoryIfNeeded() {
+        let url = photosDirectory
+        
+        if !FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                print("📁 Created photos directory: \(url.path)")
+            } catch {
+                print("❌ Failed to create photos directory: \(error)")
+            }
+        }
+    }
+    
+    func savePhoto(_ image: UIImage, withId photoId: UUID) -> String? {
+        let filename = "\(photoId.uuidString).jpg"
+        let fileURL = photosDirectory.appendingPathComponent(filename)
+        
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("❌ Failed to convert image to JPEG data")
+            return nil
+        }
+        
+        do {
+            try imageData.write(to: fileURL)
+            let relativePath = "InventryPhotos/\(filename)"
+            print("✅ Photo saved to: \(relativePath)")
+            return relativePath
+        } catch {
+            print("❌ Failed to save photo: \(error)")
+            return nil
+        }
+    }
+    
+    func loadPhoto(from relativePath: String) -> UIImage? {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent(relativePath)
+        
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            print("❌ Photo file does not exist: \(relativePath)")
+            return nil
+        }
+        
+        guard let imageData = try? Data(contentsOf: fileURL),
+              let image = UIImage(data: imageData) else {
+            print("❌ Failed to load image from: \(relativePath)")
+            return nil
+        }
+        
+        return image
+    }
+    
+    func deletePhoto(at relativePath: String) {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent(relativePath)
+        
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+            print("✅ Photo deleted: \(relativePath)")
+        } catch {
+            print("❌ Failed to delete photo: \(error)")
+        }
+    }
+    
+    func savePhotoReference(_ image: UIImage) -> PhotoReference {
+        let photoRef = PhotoReference(filename: "\(UUID().uuidString).jpg", originalImage: image)
+        
+        if let localPath = savePhoto(image, withId: photoRef.id) {
+            var updatedPhotoRef = photoRef
+            updatedPhotoRef.localPath = localPath
+            return updatedPhotoRef
+        }
+        
+        return photoRef
+    }
+    
+    func loadPhotoForReference(_ photoRef: PhotoReference) -> UIImage? {
+        if let originalImage = photoRef.originalImage {
+            return originalImage
+        }
+        
+        if let localPath = photoRef.localPath {
+            let image = loadPhoto(from: localPath)
+            return image
+        }
+        
+        if let remoteURL = photoRef.remoteURL {
+            print("🔄 Remote image loading not implemented yet: \(remoteURL)")
+        }
+        
+        return nil
+    }
+}
 
 // MARK: - Photo Reference Model
 struct PhotoReference: Identifiable, Codable {
@@ -53,6 +160,18 @@ struct PhotoReference: Identifiable, Codable {
         try container.encodeIfPresent(remoteURL, forKey: .remoteURL)
         try container.encodeIfPresent(uploadedAt, forKey: .uploadedAt)
         try container.encode(createdAt, forKey: .createdAt)
+    }
+    
+    // MARK: - Photo Loading Helpers
+    
+    /// Loads the actual UIImage for this photo reference
+    func loadImage() -> UIImage? {
+        return PhotoStorageService.shared.loadPhotoForReference(self)
+    }
+    
+    /// Creates a PhotoReference from a UIImage and saves it to storage
+    static func create(from image: UIImage) -> PhotoReference {
+        return PhotoStorageService.shared.savePhotoReference(image)
     }
 }
 

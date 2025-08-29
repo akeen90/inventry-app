@@ -410,6 +410,101 @@ struct ItemsListView: View {
     }
 }
 
+// MARK: - PhotoReference Gallery Components
+struct PhotoReferenceGalleryView: View {
+    let photoReferences: [PhotoReference]
+    let onDelete: ((Int) -> Void)?
+    let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+    
+    var body: some View {
+        if photoReferences.isEmpty {
+            EmptyPhotoView()
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("\(photoReferences.count) Photo\(photoReferences.count == 1 ? "" : "s")", systemImage: "photo.stack")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Spacer()
+                }
+                
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(photoReferences.indices, id: \.self) { index in
+                        PhotoReferenceThumbnailView(
+                            photoReference: photoReferences[index],
+                            onDelete: onDelete != nil ? {
+                                onDelete?(index)
+                            } : nil
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct PhotoReferenceThumbnailView: View {
+    let photoReference: PhotoReference
+    let onDelete: (() -> Void)?
+    @State private var showingFullScreen = false
+    @State private var loadedImage: UIImage?
+    
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 120)
+                    .clipped()
+                    .cornerRadius(12)
+                    .onTapGesture {
+                        showingFullScreen = true
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: 120)
+                    .overlay(
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                    )
+            }
+            
+            if onDelete != nil {
+                Button(action: {
+                    onDelete?()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.white)
+                        .background(Circle().fill(Color.red))
+                        .font(.system(size: 24))
+                }
+                .offset(x: 8, y: -8)
+            }
+        }
+        .onAppear {
+            loadImage()
+        }
+        .fullScreenCover(isPresented: $showingFullScreen) {
+            if let image = loadedImage {
+                FullScreenPhotoView(image: image)
+            }
+        }
+    }
+    
+    private func loadImage() {
+        if let image = photoReference.loadImage() {
+            self.loadedImage = image
+        }
+    }
+}
+
 struct ItemRowView: View {
     let item: InventoryItem
     
@@ -655,9 +750,9 @@ struct AddInventoryItemView: View {
             newItem.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         
-        // Add photos
-        newItem.photos = capturedImages.map { _ in
-            PhotoReference(filename: "item_\(newItem.id.uuidString)_\(UUID().uuidString).jpg")
+        // Add photos and save them to storage
+        newItem.photos = capturedImages.map { image in
+            PhotoReference.create(from: image)
         }
         
         print("✅ Item created with ID: \(newItem.id)")
@@ -749,21 +844,43 @@ struct EditInventoryItemView: View {
                 }
                 
                 Section("Photos") {
+                    // Show existing photos from the item with delete option
                     if !item.photos.isEmpty {
-                        HStack {
-                            Label("\(item.photos.count) existing", systemImage: "photo.fill")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Existing Photos")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Spacer()
+                            
+                            PhotoReferenceGalleryView(
+                                photoReferences: item.photos,
+                                onDelete: { index in
+                                    // Remove from item's photos array
+                                    var updatedItem = item
+                                    updatedItem.photos.remove(at: index)
+                                    // Update the item in the service
+                                    Task {
+                                        await inventoryService.updateItemInRoom(updatedItem, roomId: roomId)
+                                    }
+                                }
+                            )
                         }
                     }
                     
-                    PhotoGalleryView(
-                        images: capturedImages,
-                        onDelete: { index in
-                            capturedImages.remove(at: index)
+                    // Show newly captured images
+                    if !capturedImages.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("New Photos")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            PhotoGalleryView(
+                                images: capturedImages,
+                                onDelete: { index in
+                                    capturedImages.remove(at: index)
+                                }
+                            )
                         }
-                    )
+                    }
                     
                     WorkingCameraButton(
                         title: "Add Photos",
@@ -856,10 +973,10 @@ struct EditInventoryItemView: View {
         updatedItem.isComplete = isComplete
         updatedItem.updatedAt = Date()
         
-        // Add any new photos
+        // Add any new photos and save them to storage
         if !capturedImages.isEmpty {
-            let newPhotos = capturedImages.map { _ in
-                PhotoReference(filename: "item_\(updatedItem.id.uuidString)_\(UUID().uuidString).jpg")
+            let newPhotos = capturedImages.map { image in
+                PhotoReference.create(from: image)
             }
             updatedItem.photos.append(contentsOf: newPhotos)
         }

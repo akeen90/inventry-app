@@ -6,9 +6,20 @@ class InventoryService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
+    // Store reports per property to maintain persistence
+    private var reportCache: [UUID: InventoryReport] = [:]
+    
     func loadInventoryReport(for propertyId: UUID, type: InventoryType) {
         isLoading = true
         errorMessage = nil
+        
+        // Check if we have a cached report for this property
+        if let cachedReport = reportCache[propertyId] {
+            currentReport = cachedReport
+            print("📋 Loaded cached report for property \(propertyId) with \(cachedReport.rooms.count) rooms")
+            isLoading = false
+            return
+        }
         
         // Check if we already have a report for this property
         if let existingReport = currentReport, existingReport.propertyId == propertyId {
@@ -22,7 +33,7 @@ class InventoryService: ObservableObject {
                 try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
                 
                 // Create new report if none exists
-                let report = InventoryReport(propertyId: propertyId, inventoryType: type)
+                var report = InventoryReport(propertyId: propertyId, inventoryType: type)
                 
                 // Add some sample rooms for demonstration
                 var sampleRooms: [Room] = []
@@ -58,10 +69,13 @@ class InventoryService: ObservableObject {
                 sampleRooms.append(bedroom)
                 
                 // Update report with sample rooms
-                var updatedReport = report
-                updatedReport.rooms = sampleRooms
+                report.rooms = sampleRooms
                 
-                self.currentReport = updatedReport
+                // Cache the report for persistence
+                self.reportCache[propertyId] = report
+                self.currentReport = report
+                
+                print("📋 Created and cached new report for property \(propertyId) with \(report.rooms.count) rooms")
                 
             } catch {
                 errorMessage = "Failed to load inventory: \(error.localizedDescription)"
@@ -88,7 +102,9 @@ class InventoryService: ObservableObject {
             report.rooms.append(room)
             report.updatedAt = Date()
             
+            // Update both current report and cache
             self.currentReport = report
+            self.reportCache[report.propertyId] = report
             
         } catch {
             errorMessage = "Failed to add room: \(error.localizedDescription)"
@@ -114,7 +130,10 @@ class InventoryService: ObservableObject {
             if let index = report.rooms.firstIndex(where: { $0.id == room.id }) {
                 report.rooms[index] = room
                 report.updatedAt = Date()
+                
+                // Update both current report and cache
                 self.currentReport = report
+                self.reportCache[report.propertyId] = report
             } else {
                 errorMessage = "Room not found"
             }
@@ -143,7 +162,9 @@ class InventoryService: ObservableObject {
             report.rooms.removeAll { $0.id == room.id }
             report.updatedAt = Date()
             
+            // Update both current report and cache
             self.currentReport = report
+            self.reportCache[report.propertyId] = report
             
         } catch {
             errorMessage = "Failed to delete room: \(error.localizedDescription)"
@@ -170,7 +191,10 @@ class InventoryService: ObservableObject {
                 report.rooms[roomIndex].items.append(item)
                 report.rooms[roomIndex].updatedAt = Date()
                 report.updatedAt = Date()
+                
+                // Update both current report and cache
                 self.currentReport = report
+                self.reportCache[report.propertyId] = report
                 
                 print("✅ Item '\(item.name)' added to room. Room now has \(report.rooms[roomIndex].items.count) items")
                 print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
@@ -208,7 +232,10 @@ class InventoryService: ObservableObject {
                     report.rooms[roomIndex].items[itemIndex] = item
                     report.rooms[roomIndex].updatedAt = Date()
                     report.updatedAt = Date()
+                    
+                    // Update both current report and cache
                     self.currentReport = report
+                    self.reportCache[report.propertyId] = report
                     
                     print("✅ Item '\(item.name)' updated. Complete status changed: \(oldIsComplete) → \(item.isComplete)")
                     print("✅ Room completion: \(report.rooms[roomIndex].completionPercentage)%")
@@ -247,7 +274,10 @@ class InventoryService: ObservableObject {
                 report.rooms[roomIndex].items.removeAll { $0.id == item.id }
                 report.rooms[roomIndex].updatedAt = Date()
                 report.updatedAt = Date()
+                
+                // Update both current report and cache
                 self.currentReport = report
+                self.reportCache[report.propertyId] = report
             } else {
                 errorMessage = "Room not found"
             }
@@ -286,7 +316,10 @@ class InventoryService: ObservableObject {
             }
             
             report.updatedAt = Date()
+            
+            // Update both current report and cache
             self.currentReport = report
+            self.reportCache[report.propertyId] = report
             
         } catch {
             errorMessage = "Failed to save signature: \(error.localizedDescription)"
