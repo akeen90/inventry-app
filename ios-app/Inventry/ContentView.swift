@@ -67,7 +67,7 @@ struct ReportsView: View {
 struct SettingsView: View {
     @StateObject private var firebaseService = FirebaseService.shared
     @StateObject private var authService = AuthenticationService.shared
-    // @StateObject private var syncService = SyncService.shared // TODO: Re-enable when Core Data files are added
+    // @StateObject private var syncService = SyncService.shared // TODO: Re-enable when entity files added
     
     var body: some View {
         NavigationView {

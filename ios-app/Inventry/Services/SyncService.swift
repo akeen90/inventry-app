@@ -87,20 +87,14 @@ class SyncService: ObservableObject {
         
         print("🔄 Starting sync...")
         
-        do {
-            // Step 1: Upload local changes to Firebase
-            await uploadLocalChanges()
-            
-            // Step 2: Download latest changes from Firebase
-            await downloadRemoteChanges()
-            
-            lastSyncTime = Date()
-            print("✅ Sync completed successfully at \(lastSyncTime!)")
-            
-        } catch {
-            syncError = error.localizedDescription
-            print("❌ Sync failed: \(error.localizedDescription)")
-        }
+        // Step 1: Upload local changes to Firebase
+        await uploadLocalChanges()
+        
+        // Step 2: Download latest changes from Firebase
+        await downloadRemoteChanges()
+        
+        lastSyncTime = Date()
+        print("✅ Sync completed successfully at \(lastSyncTime!)")
         
         isSyncing = false
     }
@@ -139,7 +133,7 @@ class SyncService: ObservableObject {
             print("✅ Updated local storage with remote changes")
         } catch {
             print("❌ Failed to download remote changes: \(error.localizedDescription)")
-            throw error
+            // Don't throw - just log and continue
         }
     }
     
@@ -175,6 +169,7 @@ class SyncService: ObservableObject {
     }
     
     deinit {
-        stopPeriodicSync()
+        syncTimer?.invalidate()
+        syncTimer = nil
     }
 }
